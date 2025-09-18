@@ -5,6 +5,15 @@ import { kv } from '@vercel/kv';
 // Vercel automatically detects files in this folder as serverless functions.
 
 export default async function handler(request, response) {
+    // --- The Truth Serum ---
+    // We will now log the environment variables the function ACTUALLY sees.
+    // This is the most important diagnostic step.
+    console.log('--- Environment Variable Scrying ---');
+    console.log('Does the function see the KV_URL?', !!process.env.KV_URL);
+    console.log('Does the function see the KV_REST_API_TOKEN?', !!process.env.KV_REST_API_TOKEN);
+    console.log('Does the function see the GEMINI_API_KEY?', !!process.env.GEMINI_API_KEY);
+    console.log('--- End of Scrying ---');
+
     console.log('Function started. Method:', request.method); // Log entry
 
     if (request.method !== 'POST') {
