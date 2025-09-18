@@ -70,40 +70,63 @@
             async function getDailyPrompt() {
                 dailyPromptDisplay.innerHTML = '<div class="spinner mx-auto"></div>';
                 
-                const today = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
-                const userPrompt = `Based on the date ${today}, generate a single, evocative, genre-neutral writing prompt for a daily writing challenge called 'Run & Write'. The prompt should be one compelling sentence that could inspire a story in any genre (sci-fi, fantasy, romance, thriller, slice-of-life, etc.).`;
+                // Use a consistent date string (YYYY-MM-DD) for reliable comparison.
+                const todayDateString = new Date().toISOString().split('T')[0];
+                const storedPromptData = localStorage.getItem('dailyPromptData');
+
+                // Check if we have a prompt stored for today.
+                if (storedPromptData) {
+                    try {
+                        const { prompt, date } = JSON.parse(storedPromptData);
+                        if (date === todayDateString && prompt) {
+                            // If the stored prompt is for today, display it and stop.
+                            dailyPromptDisplay.innerText = prompt;
+                            return; 
+                        }
+                    } catch (e) {
+                        console.error("Could not parse stored prompt data.", e);
+                        localStorage.removeItem('dailyPromptData'); // Clear corrupted data
+                    }
+                }
+
+                // If no valid prompt is stored for today, fetch a new one.
+                const userPrompt = `Based on the date ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}, generate a single, evocative, genre-neutral writing prompt for a daily writing challenge called 'Run & Write'. The prompt should be one compelling sentence.`;
 
                 try {
-                    // The path is updated for Vercel's conventional '/api' route.
                     const response = await fetch('/api/get-prompt', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ prompt: userPrompt })
                     });
 
-                    // --- INTELLIGENT ERROR HANDLING ---
-                    // First, check if the response is okay. If not, we need to
-                    // intelligently figure out what kind of error it is.
                     if (!response.ok) {
                         const contentType = response.headers.get("content-type");
                         let errorMessage;
-                        // If the error is HTML (like a Vercel timeout page), we don't try to parse it.
                         if (contentType && contentType.indexOf("application/json") !== -1) {
                             const error = await response.json();
                             errorMessage = error.message || 'An unknown JSON error occurred.';
                         } else {
-                            // This catches Vercel's HTML timeout pages and other non-JSON errors.
                             errorMessage = `A server error occurred (Status: ${response.status}). The server did not respond with valid JSON. This may be a timeout.`;
                         }
                         throw new Error(errorMessage);
                     }
-                    // --- END OF ERROR HANDLING ---
 
                     const result = await response.json();
-                    dailyPromptDisplay.innerText = result.text || 'The response was empty. Please try again.';
+                    const newPromptText = result.text;
+
+                    if (newPromptText) {
+                        dailyPromptDisplay.innerText = newPromptText;
+                        // Enshrine the new prompt in our local storage reliquary.
+                        const dataToStore = {
+                            prompt: newPromptText,
+                            date: todayDateString
+                        };
+                        localStorage.setItem('dailyPromptData', JSON.stringify(dataToStore));
+                    } else {
+                         dailyPromptDisplay.innerText = 'The response was empty. Please try again.';
+                    }
 
                 } catch (error) {
-                    // The error message will now be much more informative.
                     dailyPromptDisplay.innerText = `A network error occurred: ${error.message}`;
                 }
             }
