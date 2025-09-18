@@ -28,8 +28,7 @@ export default async function handler(request, response) {
             return response.status(404).send('<h1>404 - Prophecy Not Found</h1><p>The scroll for this day is missing from the Great Library.</p>');
         }
 
-        // --- The Art of the Chronomancer ---
-        // We now calculate the previous and next days for navigation.
+        // --- The Art of the Chronomancer (Now with Foresight!) ---
         const currentDate = new Date(`${date}T12:00:00Z`); // Use midday to avoid timezone shifts
         
         const prevDate = new Date(currentDate);
@@ -40,12 +39,13 @@ export default async function handler(request, response) {
         nextDate.setDate(currentDate.getDate() + 1);
         const nextDateStr = formatDate(nextDate);
         
-        // We only show the "next" link if it's not in the future.
+        // --- THE NEW WISDOM ---
+        // Before drawing a path to the past, the Scribe now checks if a scroll exists for that day.
+        const prevPromptExists = await redis.get(`prompt:${prevDateStr}`);
+        
         const today = new Date();
         const isNextDateInFuture = nextDate > today;
 
-        // --- The Art of Server-Side Rendering ---
-        // The Scribe now crafts a complete HTML document on the server.
         const html = `
             <!DOCTYPE html>
             <html lang="en">
@@ -76,7 +76,6 @@ export default async function handler(request, response) {
                         <p>${promptText}</p>
                     </div>
                     
-                    <!-- The Pilgrim's Tools -->
                     <div class="mt-8 flex justify-center items-center gap-3">
                         <button id="copyBtn" class="flex items-center gap-2 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold py-2 px-4 rounded-lg transition">
                             <svg class="btn-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
@@ -89,12 +88,14 @@ export default async function handler(request, response) {
                     </div>
                 </main>
 
-                <!-- The Threads of Time -->
                 <nav class="w-full max-w-2xl mt-4 flex justify-between items-center">
+                    ${prevPromptExists ? `
                     <a href="/prompt/${prevDateStr}" class="flex items-center gap-2 bg-white hover:bg-gray-100 text-gray-700 font-bold py-2 px-4 rounded-lg transition-transform transform hover:scale-105 shadow-md border border-gray-200">
                         <svg class="btn-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
                         Previous Prophecy
                     </a>
+                    ` : `<div></div>`}
+                    
                     ${!isNextDateInFuture ? `
                     <a href="/prompt/${nextDateStr}" class="flex items-center gap-2 bg-white hover:bg-gray-100 text-gray-700 font-bold py-2 px-4 rounded-lg transition-transform transform hover:scale-105 shadow-md border border-gray-200">
                         Next Prophecy
@@ -106,7 +107,6 @@ export default async function handler(request, response) {
                     &larr; Back to the Oracle
                 </a>
 
-                <!-- The Replicator's Spell -->
                 <script>
                     const copyBtn = document.getElementById('copyBtn');
                     const copyBtnText = document.getElementById('copyBtnText');
