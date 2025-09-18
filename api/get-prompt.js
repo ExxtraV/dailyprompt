@@ -5,41 +5,39 @@ import { kv } from '@vercel/kv';
 // Vercel automatically detects files in this folder as serverless functions.
 
 export default async function handler(request, response) {
-    // Only allow POST requests
+    console.log('Function started. Method:', request.method); // Log entry
+
     if (request.method !== 'POST') {
         return response.status(405).json({ message: 'Method Not Allowed' });
     }
 
-    // Get a consistent UTC date string to represent "today".
-    // This avoids any timezone shenanigans.
     const todayUTC = new Date().toISOString().split('T')[0];
     const key = `prompt:${todayUTC}`;
+    console.log('Today\'s key:', key); // Log the key
 
     try {
-        // --- The Great Library ---
-        // First, we check the stone tablet (Vercel KV) for today's prophecy.
+        console.log('Checking Vercel KV for stored prompt...');
         let storedPrompt = await kv.get(key);
+        console.log('KV check complete. Found prompt:', !!storedPrompt);
 
         if (storedPrompt) {
-            // A prophecy exists! We present it without bothering the oracle.
             return response.status(200).json({ text: storedPrompt });
         }
         
-        // --- The Oracle's Chamber ---
-        // The stone is bare. We are the first. We must consult the oracle (Gemini).
+        console.log('No prompt found in KV. Consulting the Gemini oracle.');
         const apiKey = process.env.GEMINI_API_KEY;
         
-        // --- NEW WISDOM: Check for the key BEFORE the journey. ---
         if (!apiKey) {
             console.error('CRITICAL: GEMINI_API_KEY environment variable is not set.');
-            // This provides a much clearer error if the key is missing.
             return response.status(500).json({ message: 'The oracle is unreachable. The secret key to its chamber is missing.' });
         }
 
+        console.log('API Key found. Preparing to call Gemini API.');
         const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
 
         const { prompt } = request.body;
         if (!prompt) {
+            console.error('Request body did not contain a prompt.');
             return response.status(400).json({ message: 'No prompt text provided.' });
         }
 
@@ -47,11 +45,13 @@ export default async function handler(request, response) {
             contents: [{ parts: [{ text: prompt }] }],
         };
 
+        console.log('Sending request to Gemini...');
         const geminiResponse = await fetch(apiUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
         });
+        console.log('Received response from Gemini. Status:', geminiResponse.status);
 
         if (!geminiResponse.ok) {
             const error = await geminiResponse.json();
@@ -63,17 +63,17 @@ export default async function handler(request, response) {
         const newPromptText = result.candidates?.[0]?.content?.parts?.[0]?.text;
 
         if (newPromptText) {
-            // --- The Inscription ---
+            console.log('New prompt generated. Storing in Vercel KV...');
             await kv.set(key, newPromptText, { ex: 86400 });
+            console.log('Storage complete. Sending response to user.');
             return response.status(200).json({ text: newPromptText });
         } else {
+            console.error('Gemini response was successful, but contained no text.');
             return response.status(500).json({ message: 'The oracle spoke, but its words were empty.' });
         }
 
     } catch (error) {
-        console.error('Function Error:', error);
-        // --- MORE DESCRIPTIVE CRY: Report the actual error message. ---
-        // This will give you a clue about what went wrong (e.g., KV connection issue).
+        console.error('Function Error (catch block):', error);
         return response.status(500).json({ message: 'A catastrophic error occurred in the temple.', detail: error.message });
     }
 }

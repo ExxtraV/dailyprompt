@@ -70,26 +70,22 @@
             async function getDailyPrompt() {
                 dailyPromptDisplay.innerHTML = '<div class="spinner mx-auto"></div>';
                 
-                // Use a consistent date string (YYYY-MM-DD) for reliable comparison.
                 const todayDateString = new Date().toISOString().split('T')[0];
                 const storedPromptData = localStorage.getItem('dailyPromptData');
 
-                // Check if we have a prompt stored for today.
                 if (storedPromptData) {
                     try {
                         const { prompt, date } = JSON.parse(storedPromptData);
                         if (date === todayDateString && prompt) {
-                            // If the stored prompt is for today, display it and stop.
                             dailyPromptDisplay.innerText = prompt;
                             return; 
                         }
                     } catch (e) {
                         console.error("Could not parse stored prompt data.", e);
-                        localStorage.removeItem('dailyPromptData'); // Clear corrupted data
+                        localStorage.removeItem('dailyPromptData');
                     }
                 }
 
-                // If no valid prompt is stored for today, fetch a new one.
                 const userPrompt = `Based on the date ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}, generate a single, evocative, genre-neutral writing prompt for a daily writing challenge called 'Run & Write'. The prompt should be one compelling sentence.`;
 
                 try {
@@ -99,15 +95,13 @@
                         body: JSON.stringify({ prompt: userPrompt })
                     });
 
+                    // --- A WISER GATEKEEPER ---
+                    // Now we properly interrogate the response before assuming it's okay.
                     if (!response.ok) {
-                        const contentType = response.headers.get("content-type");
-                        let errorMessage;
-                        if (contentType && contentType.indexOf("application/json") !== -1) {
-                            const error = await response.json();
-                            errorMessage = error.message || 'An unknown JSON error occurred.';
-                        } else {
-                            errorMessage = `A server error occurred (Status: ${response.status}). The server did not respond with valid JSON. This may be a timeout.`;
-                        }
+                        // The server responded with an error status. Let's find out why.
+                        const errorData = await response.json(); // Attempt to parse the error message from the server.
+                        // Construct a detailed error message for display.
+                        const errorMessage = `Error: ${errorData.message || 'Unknown server error.'}` + (errorData.detail ? ` (Details: ${errorData.detail})` : '');
                         throw new Error(errorMessage);
                     }
 
@@ -116,7 +110,6 @@
 
                     if (newPromptText) {
                         dailyPromptDisplay.innerText = newPromptText;
-                        // Enshrine the new prompt in our local storage reliquary.
                         const dataToStore = {
                             prompt: newPromptText,
                             date: todayDateString
@@ -127,6 +120,7 @@
                     }
 
                 } catch (error) {
+                    // This will now display our more detailed, server-provided error.
                     dailyPromptDisplay.innerText = `A network error occurred: ${error.message}`;
                 }
             }
