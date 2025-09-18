@@ -3,7 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Run & Write: Daily Writing Prompt</title>
+    <!-- A more potent Title for the main page -->
+    <title>Run & Write | Daily Writing Prompts for Creative Writers</title>
+    <!-- The crucial meta description, the whisper to the seeker -->
+    <meta name="description" content="Unlock your imagination with a fresh, daily writing prompt. Run & Write is a free sanctuary for creative writers seeking inspiration, story ideas, and a cure for writer's block.">
+    
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -58,7 +62,7 @@
                 <button id="closeHistoryBtn" class="text-gray-500 hover:text-gray-800 text-3xl leading-none">&times;</button>
             </div>
             <div id="historyContent" class="overflow-y-auto space-y-4 pr-2">
-                <!-- History will be injected here -->
+                <!-- History will now contain links to the permanent scrolls -->
             </div>
         </div>
     </div>
@@ -76,7 +80,7 @@
         async function getPrompt() {
             try {
                 const body = {
-                    action: 'get_today', // Specify the action for the backend
+                    action: 'get_today', 
                     prompt: "A daily writing prompt for a creative writer. The prompt should be evocative, open-ended, and suitable for any genre. It should inspire a scene, a character, or a story. Be creative and avoid clichés."
                 };
 
@@ -107,7 +111,6 @@
         async function getHistory() {
             historyContent.innerHTML = '<p class="text-gray-500 text-center p-4">Summoning memories from the Great Library...</p>';
             historyModal.classList.remove('hidden');
-            // Animate modal entrance
             setTimeout(() => {
                 historyModal.querySelector('div').classList.remove('scale-95');
                 historyModal.classList.remove('opacity-0');
@@ -118,7 +121,7 @@
                 const response = await fetch('/api/get-prompt', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ action: 'get_history' }) // Send the history action
+                    body: JSON.stringify({ action: 'get_history' }) 
                 });
 
                 if (!response.ok) {
@@ -127,7 +130,7 @@
                 }
 
                 const history = await response.json();
-                historyContent.innerHTML = ''; // Clear loading message
+                historyContent.innerHTML = ''; 
 
                 if (history.length === 0) {
                     historyContent.innerHTML = '<p class="text-gray-500 text-center p-4">The archives are quiet. No past prompts have been recorded.</p>';
@@ -135,9 +138,10 @@
                     history.forEach(item => {
                         const promptEl = document.createElement('div');
                         promptEl.className = 'p-4 border-b border-gray-200 last:border-b-0 fade-in';
+                        // The scribe now creates a link to the permanent scroll!
                         promptEl.innerHTML = `
                             <p class="text-sm font-semibold text-orange-600">${item.date}</p>
-                            <p class="text-gray-700 mt-1">${item.prompt}</p>
+                            <a href="/prompt/${item.date}" target="_blank" class="text-gray-700 mt-1 hover:text-orange-700 hover:underline">${item.prompt}</a>
                         `;
                         historyContent.appendChild(promptEl);
                     });
