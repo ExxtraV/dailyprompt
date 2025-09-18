@@ -28,6 +28,14 @@ export default async function handler(request, response) {
         // --- The Oracle's Chamber ---
         // The stone is bare. We are the first. We must consult the oracle (Gemini).
         const apiKey = process.env.GEMINI_API_KEY;
+        
+        // --- NEW WISDOM: Check for the key BEFORE the journey. ---
+        if (!apiKey) {
+            console.error('CRITICAL: GEMINI_API_KEY environment variable is not set.');
+            // This provides a much clearer error if the key is missing.
+            return response.status(500).json({ message: 'The oracle is unreachable. The secret key to its chamber is missing.' });
+        }
+
         const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
 
         const { prompt } = request.body;
@@ -56,12 +64,7 @@ export default async function handler(request, response) {
 
         if (newPromptText) {
             // --- The Inscription ---
-            // We have the new prophecy. Now, we must carve it into the stone tablet.
-            // We'll tell the magic to let the inscription fade after a day (86400 seconds)
-            // to keep the library clean.
             await kv.set(key, newPromptText, { ex: 86400 });
-
-            // And finally, we present the new prophecy to our first visitor.
             return response.status(200).json({ text: newPromptText });
         } else {
             return response.status(500).json({ message: 'The oracle spoke, but its words were empty.' });
@@ -69,7 +72,9 @@ export default async function handler(request, response) {
 
     } catch (error) {
         console.error('Function Error:', error);
-        return response.status(500).json({ message: 'A catastrophic error occurred in the temple.' });
+        // --- MORE DESCRIPTIVE CRY: Report the actual error message. ---
+        // This will give you a clue about what went wrong (e.g., KV connection issue).
+        return response.status(500).json({ message: 'A catastrophic error occurred in the temple.', detail: error.message });
     }
 }
 
