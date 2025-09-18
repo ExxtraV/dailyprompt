@@ -1,8 +1,9 @@
 {
-    "functions": {
-        "api/get-prompt.js": {
-            "maxDuration": 25
-        }
+  "rewrites": [
+    {
+      "source": "/prompt/:date",
+      "destination": "/api/prompt/[date]"
     }
+  ]
 }
 
