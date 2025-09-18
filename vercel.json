@@ -1,0 +1,7 @@
+{
+    "functions": {
+        "api/get-prompt.js": {
+            "maxDuration": 10
+        }
+    }
+}
