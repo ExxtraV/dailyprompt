@@ -81,15 +81,29 @@
                         body: JSON.stringify({ prompt: userPrompt })
                     });
 
+                    // --- INTELLIGENT ERROR HANDLING ---
+                    // First, check if the response is okay. If not, we need to
+                    // intelligently figure out what kind of error it is.
                     if (!response.ok) {
-                        const error = await response.json();
-                        throw new Error(error.message || 'An error occurred.');
+                        const contentType = response.headers.get("content-type");
+                        let errorMessage;
+                        // If the error is HTML (like a Vercel timeout page), we don't try to parse it.
+                        if (contentType && contentType.indexOf("application/json") !== -1) {
+                            const error = await response.json();
+                            errorMessage = error.message || 'An unknown JSON error occurred.';
+                        } else {
+                            // This catches Vercel's HTML timeout pages and other non-JSON errors.
+                            errorMessage = `A server error occurred (Status: ${response.status}). The server did not respond with valid JSON. This may be a timeout.`;
+                        }
+                        throw new Error(errorMessage);
                     }
+                    // --- END OF ERROR HANDLING ---
 
                     const result = await response.json();
                     dailyPromptDisplay.innerText = result.text || 'The response was empty. Please try again.';
 
                 } catch (error) {
+                    // The error message will now be much more informative.
                     dailyPromptDisplay.innerText = `A network error occurred: ${error.message}`;
                 }
             }
