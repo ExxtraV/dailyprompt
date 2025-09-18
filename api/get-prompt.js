@@ -12,8 +12,6 @@ const redis = new Redis({
 
 
 export default async function handler(request, response) {
-    console.log('--- Using MANUAL OVERRIDE Connection ---');
-
     // A quick check to ensure the new keys are present.
     if (!process.env.MANUAL_UPSTASH_URL || !process.env.MANUAL_UPSTASH_TOKEN) {
         console.error('CRITICAL: Manual Upstash environment variables are not set.');
@@ -24,6 +22,42 @@ export default async function handler(request, response) {
         return response.status(405).json({ message: 'Method Not Allowed' });
     }
 
+    // --- The Two Paths ---
+    // We now check for an 'action' in the request to decide which spell to cast.
+    const { action, prompt } = request.body;
+
+    if (action === 'get_history') {
+        try {
+            console.log('--- History Request Received ---');
+            // Fetch all keys matching the pattern 'prompt:*'
+            const keys = await redis.keys('prompt:*');
+
+            if (!keys || keys.length === 0) {
+                return response.status(200).json([]); // Return an empty array if no history exists
+            }
+
+            // Fetch all the values for the found keys in a single command
+            const prompts = await redis.mget(...keys);
+            
+            // Combine the keys (dates) and values (prompts) into a structured array
+            const history = keys.map((key, index) => ({
+                date: key.replace('prompt:', ''),
+                prompt: prompts[index]
+            }))
+            // Sort the history so the newest prompts appear first
+            .sort((a, b) => new Date(b.date) - new Date(a.date));
+
+            return response.status(200).json(history);
+
+        } catch (error) {
+            console.error('History Fetch Error:', error);
+            return response.status(500).json({ message: 'Failed to retrieve prompt history from the Great Library.', detail: error.message });
+        }
+    }
+
+
+    // --- The Original Path (get_today) ---
+    // If no action or 'get_today' is specified, we perform the original ritual.
     const todayUTC = new Date().toISOString().split('T')[0];
     const key = `prompt:${todayUTC}`;
 
@@ -41,10 +75,9 @@ export default async function handler(request, response) {
         }
 
         const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
-
-        const { prompt } = request.body;
+        
         if (!prompt) {
-            return response.status(400).json({ message: 'No prompt text provided.' });
+            return response.status(400).json({ message: 'No prompt text provided for the oracle.' });
         }
 
         const payload = {
