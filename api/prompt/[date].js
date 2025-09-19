@@ -11,10 +11,29 @@ const redis = new Redis({
 });
 
 // A small helper to format dates consistently.
+/**
+ * Formats a JavaScript Date object into a 'YYYY-MM-DD' string.
+ * @param {Date} date The date to format.
+ * @returns {string} The formatted date string.
+ */
 function formatDate(date) {
     return date.toISOString().split('T')[0];
 }
 
+/**
+ * Handles requests for viewing a prompt from a specific date.
+ * This function is a Vercel dynamic route that captures the date from the URL.
+ * It fetches the corresponding prompt from Redis. If found, it constructs and
+ * serves an HTML page displaying the prompt, along with navigation to the
+ * previous and next day's prompts if they exist. It also includes social media
+ * sharing buttons and metadata for SEO.
+ *
+ * @param {import('http').IncomingMessage} request The Vercel serverless function request object,
+ *   containing the date in the `query` property.
+ * @param {import('http').ServerResponse} response The Vercel serverless function response object used to
+ *   send back the HTML page or an error.
+ * @returns {Promise<void>} A promise that resolves when the response has been sent.
+ */
 export default async function handler(request, response) {
     // The Scribe reads the date from the address of the request.
     const { date } = request.query;

@@ -27,21 +27,28 @@
 </head>
 <body class="bg-gray-50 text-gray-800">
 
+    <!-- Main container for the entire page content -->
     <div class="min-h-screen flex flex-col items-center justify-center p-4">
         
+        <!-- Page Header -->
         <header class="text-center mb-8">
             <h1 class="text-5xl font-black text-gray-900">Run & Write</h1>
             <p class="text-lg text-gray-600 mt-2">Your Daily Dose of Creative Inspiration</p>
         </header>
 
+        <!-- Main content block -->
         <main class="w-full max-w-2xl bg-white rounded-xl shadow-lg p-8 border border-gray-200">
+            <!-- Container for the daily prompt -->
             <div id="promptContainer" class="text-center">
                 <h2 class="text-xl font-bold text-orange-600 mb-4">Today's Writing Prompt</h2>
+                <!-- Area where the prompt text is displayed -->
                 <div id="promptDisplay" class="min-h-[100px] flex items-center justify-center p-4 bg-orange-50 rounded-lg border-2 border-dashed border-orange-200">
                     <p id="promptText" class="text-lg text-gray-700 leading-relaxed">Summoning a new prophecy from the ether...</p>
                 </div>
+                <!-- Hidden by default, shown when an error occurs -->
                 <div id="errorDisplay" class="hidden mt-4 text-red-600 bg-red-100 p-3 rounded-md"></div>
             </div>
+             <!-- Button to open the prompt history modal -->
              <div class="text-center mt-6">
                 <button id="historyBtn" class="bg-gray-700 hover:bg-gray-900 text-white font-bold py-2 px-6 rounded-lg transition-transform transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-gray-300">
                     View Prompt Archive
@@ -49,26 +56,34 @@
             </div>
         </main>
 
+        <!-- Page Footer -->
         <footer class="text-center mt-12 text-gray-500">
             <p>&copy; 2025 Run & Write. A sanctuary for the written word.</p>
         </footer>
     </div>
     
-    <!-- History Modal -->
+    <!--
+      History Modal
+      This is a full-screen overlay that displays the list of past prompts.
+      It is hidden by default and shown when the "View Prompt Archive" button is clicked.
+    -->
     <div id="historyModal" class="hidden fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4 z-50 transition-opacity duration-300">
         <div class="bg-white rounded-lg shadow-2xl p-6 w-full max-w-2xl max-h-[80vh] flex flex-col transform transition-transform duration-300 scale-95">
+            <!-- Modal Header -->
             <div class="flex justify-between items-center mb-4 border-b pb-3">
                 <h2 class="text-2xl font-bold text-gray-800">Prompt Archive</h2>
                 <button id="closeHistoryBtn" class="text-gray-500 hover:text-gray-800 text-3xl leading-none">&times;</button>
             </div>
+            <!-- Scrollable content area for the history list -->
             <div id="historyContent" class="overflow-y-auto space-y-4 pr-2">
-                <!-- History will now contain links to the permanent scrolls -->
+                <!-- History items are dynamically inserted here by the script -->
             </div>
         </div>
     </div>
 
 
     <script>
+        // --- DOM Element Selection ---
         const promptText = document.getElementById('promptText');
         const errorDisplay = document.getElementById('errorDisplay');
         const historyBtn = document.getElementById('historyBtn');
@@ -77,10 +92,16 @@
         const historyContent = document.getElementById('historyContent');
 
 
+        /**
+         * Fetches the prompt for the current day from the API.
+         * It sends a POST request to the '/api/get-prompt' endpoint.
+         * If successful, it updates the prompt display. On failure, it shows an error message.
+         */
         async function getPrompt() {
             try {
                 const body = {
-                    action: 'get_today', 
+                    action: 'get_today', // Specifies the action for the API
+                    // The prompt sent to the Gemini API to generate the daily writing prompt
                     prompt: "A daily writing prompt for a creative writer. The prompt should be evocative, open-ended, and suitable for any genre. It should inspire a scene, a character, or a story. Be creative and avoid clichés."
                 };
 
@@ -108,6 +129,11 @@
             }
         }
         
+        /**
+         * Fetches the entire prompt history from the API.
+         * It displays the history modal and populates it with the prompts fetched.
+         * Each prompt is a link to its permanent page.
+         */
         async function getHistory() {
             historyContent.innerHTML = '<p class="text-gray-500 text-center p-4">Summoning memories from the Great Library...</p>';
             historyModal.classList.remove('hidden');
@@ -152,6 +178,9 @@
             }
         }
 
+        /**
+         * Closes the history modal with a fade-out and shrink animation.
+         */
         function closeHistoryModal() {
             historyModal.querySelector('div').classList.add('scale-95');
             historyModal.classList.add('opacity-0');
@@ -160,14 +189,19 @@
             }, 300);
         }
 
+        // --- Event Listeners ---
+        // Open the history modal when the button is clicked.
         historyBtn.addEventListener('click', getHistory);
+        // Close the modal with the close button.
         closeHistoryBtn.addEventListener('click', closeHistoryModal);
+        // Close the modal if the user clicks on the background overlay.
         historyModal.addEventListener('click', (event) => {
             if (event.target === historyModal) {
                 closeHistoryModal();
             }
         });
 
+        // Fetch the daily prompt as soon as the page content has loaded.
         document.addEventListener('DOMContentLoaded', getPrompt);
     </script>
 </body>

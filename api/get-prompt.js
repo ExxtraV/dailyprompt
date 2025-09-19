@@ -11,6 +11,22 @@ const redis = new Redis({
 });
 
 
+/**
+ * Handles API requests for fetching and generating prompts.
+ * This function serves two main purposes based on the 'action' provided in the request body:
+ * 1.  `get_history`: Fetches all historical prompts stored in Redis, sorts them by date, and returns them.
+ * 2.  Default (no action or 'get_today'): Retrieves or generates the prompt for the current day. It first checks
+ *     if the prompt is already stored in Redis. If so, it returns the stored value. If not, it calls the
+ *     Gemini API to generate a new prompt, stores it in Redis with a 24-hour expiration, and then returns it.
+ *
+ * It requires `MANUAL_UPSTASH_URL`, `MANUAL_UPSTASH_TOKEN`, and `GEMINI_API_KEY` environment variables to be set.
+ *
+ * @param {import('http').IncomingMessage} request The Vercel serverless function request object. The body
+ *   can contain an `action` property ('get_history') and a `prompt` property (for generation).
+ * @param {import('http').ServerResponse} response The Vercel serverless function response object used to
+ *   send back the JSON response or an error.
+ * @returns {Promise<void>} A promise that resolves when the response has been sent.
+ */
 export default async function handler(request, response) {
     // A quick check to ensure the new keys are present.
     if (!process.env.MANUAL_UPSTASH_URL || !process.env.MANUAL_UPSTASH_TOKEN) {

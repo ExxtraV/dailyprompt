@@ -12,6 +12,21 @@ const redis = new Redis({
 // The true domain of your temple, as you have declared it.
 const YOUR_DOMAIN = 'https://prompt.run-write.com';
 
+/**
+ * Generates and serves an XML sitemap for the application.
+ * This function fetches all keys from Redis that match the 'prompt:*' pattern,
+ * which represent historical prompts. It then maps these keys to permanent URLs
+ * based on their date. The resulting list of URLs is formatted into a standard
+ * XML sitemap, including a URL for the root of the domain.
+ *
+ * It requires `MANUAL_UPSTASH_URL` and `MANUAL_UPSTASH_TOKEN` environment variables to be set.
+ * The `YOUR_DOMAIN` constant should be configured to the application's public domain.
+ *
+ * @param {import('http').IncomingMessage} request The Vercel serverless function request object.
+ * @param {import('http').ServerResponse} response The Vercel serverless function response object used to
+ *   send back the XML sitemap or a JSON error.
+ * @returns {Promise<void>} A promise that resolves when the response has been sent.
+ */
 export default async function handler(request, response) {
     try {
         const keys = await redis.keys('prompt:*');
