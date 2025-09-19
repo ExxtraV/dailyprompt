@@ -81,7 +81,7 @@
             try {
                 const body = {
                     action: 'get_today', 
-                    prompt: "A daily writing prompt for a creative writer. The prompt should be evocative, open-ended, and suitable for any genre. It should inspire a scene, a character, or a story. Be creative and avoid clichés."
+                    prompt: "A daily writing prompt for a creative writer. The prompt should be evocative, open-ended, and suitable for any genre. It should inspire a scene, a character, or a story. Be creative and avoid clichés. It should only be a paragraph, do not return formatting."
                 };
 
                 const response = await fetch('/api/get-prompt', {
