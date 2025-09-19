@@ -28,7 +28,7 @@ export default async function handler(request, response) {
             return response.status(404).send('<h1>404 - Prophecy Not Found</h1><p>The scroll for this day is missing from the Great Library.</p>');
         }
 
-        // --- The Art of the Chronomancer (Now with Foresight!) ---
+        // --- The Art of the Chronomancer (Now with Perfect Foresight!) ---
         const currentDate = new Date(`${date}T12:00:00Z`); // Use midday to avoid timezone shifts
         
         const prevDate = new Date(currentDate);
@@ -39,12 +39,11 @@ export default async function handler(request, response) {
         nextDate.setDate(currentDate.getDate() + 1);
         const nextDateStr = formatDate(nextDate);
         
-        // --- THE NEW WISDOM ---
-        // Before drawing a path to the past, the Scribe now checks if a scroll exists for that day.
+        // --- THE NEW, PERFECTED WISDOM ---
+        // The Scribe now checks for the existence of BOTH the previous and next scrolls
+        // before creating a path to them. This is symmetrical and foolproof.
         const prevPromptExists = await redis.get(`prompt:${prevDateStr}`);
-        
-        const today = new Date();
-        const isNextDateInFuture = nextDate > today;
+        const nextPromptExists = await redis.get(`prompt:${nextDateStr}`);
 
         const html = `
             <!DOCTYPE html>
@@ -55,7 +54,6 @@ export default async function handler(request, response) {
                 <title>Writing Prompt for ${date} | Run & Write</title>
                 <meta name="description" content="Creative writing prompt for ${date}: ${promptText.substring(0, 120)}...">
                 
-                <!-- The Social Sigils -->
                 <meta property="og:title" content="Writing Prompt for ${date} | Run & Write" />
                 <meta property="og:description" content="${promptText.substring(0, 120)}..." />
                 <meta property="og:type" content="website" />
@@ -96,7 +94,7 @@ export default async function handler(request, response) {
                     </a>
                     ` : `<div></div>`}
                     
-                    ${!isNextDateInFuture ? `
+                    ${nextPromptExists ? `
                     <a href="/prompt/${nextDateStr}" class="flex items-center gap-2 bg-white hover:bg-gray-100 text-gray-700 font-bold py-2 px-4 rounded-lg transition-transform transform hover:scale-105 shadow-md border border-gray-200">
                         Next Prophecy
                         <svg class="btn-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
