@@ -1,20 +1,29 @@
 <!DOCTYPE html>
-<html lang="en">
+<!-- The class is added here to allow our script to easily toggle dark mode -->
+<html lang="en" class="">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <!-- A more potent Title for the main page -->
     <title>Run & Write | Daily Writing Prompts for Creative Writers</title>
-    <!-- The crucial meta description, the whisper to the seeker -->
     <meta name="description" content="Unlock your imagination with a fresh, daily writing prompt. Run & Write is a free sanctuary for creative writers seeking inspiration, story ideas, and a cure for writer's block.">
     
     <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- The Edict: This commands Tailwind to obey our class-based toggle. -->
+    <script>
+      tailwind.config = {
+        darkMode: 'class',
+      }
+    </script>
+
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
     <style>
         body {
             font-family: 'Inter', sans-serif;
+            /* Smooth transitions for our new dark mode */
+            transition: background-color 0.3s ease-in-out, color 0.3s ease-in-out;
         }
         .fade-in {
             animation: fadeIn 1s ease-in-out;
@@ -24,45 +33,67 @@
             to { opacity: 1; transform: translateY(0); }
         }
     </style>
-</head>
-<body class="bg-gray-50 text-gray-800">
+    <!-- The Sentry Script: This prevents the flash of an incorrect theme. -->
+    <script>
+        (() => {
+            const storedTheme = localStorage.getItem('theme');
+            const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
 
-    <div class="min-h-screen flex flex-col items-center justify-center p-4">
+            if (storedTheme === 'dark' || (storedTheme === null && prefersDark)) {
+                document.documentElement.classList.add('dark');
+            } else {
+                document.documentElement.classList.remove('dark');
+            }
+        })();
+    </script>
+</head>
+<!-- The body and all relevant elements now have dark mode classes -->
+<body class="bg-gray-50 text-gray-800 dark:bg-gray-900 dark:text-gray-300">
+
+    <div class="min-h-screen flex flex-col items-center justify-center p-4 relative">
         
         <header class="text-center mb-8">
-            <h1 class="text-5xl font-black text-gray-900">Run & Write</h1>
-            <p class="text-lg text-gray-600 mt-2">Your Daily Dose of Creative Inspiration</p>
+            <h1 class="text-5xl font-black text-gray-900 dark:text-gray-100">Run & Write</h1>
+            <p class="text-lg text-gray-600 mt-2 dark:text-gray-400">Your Daily Dose of Creative Inspiration</p>
         </header>
 
-        <main class="w-full max-w-2xl bg-white rounded-xl shadow-lg p-8 border border-gray-200">
+        <main class="w-full max-w-2xl bg-white rounded-xl shadow-lg p-8 border border-gray-200 dark:bg-gray-800 dark:border-gray-700">
             <div id="promptContainer" class="text-center">
-                <h2 class="text-xl font-bold text-orange-600 mb-4">Today's Writing Prompt</h2>
-                <div id="promptDisplay" class="min-h-[100px] flex items-center justify-center p-4 bg-orange-50 rounded-lg border-2 border-dashed border-orange-200">
-                    <p id="promptText" class="text-lg text-gray-700 leading-relaxed">Summoning a new prophecy from the ether...</p>
+                <h2 class="text-xl font-bold text-orange-600 dark:text-orange-500 mb-4">Today's Writing Prompt</h2>
+                <div id="promptDisplay" class="min-h-[100px] flex items-center justify-center p-4 bg-orange-50 rounded-lg border-2 border-dashed border-orange-200 dark:bg-gray-700 dark:border-gray-600">
+                    <p id="promptText" class="text-lg text-gray-700 leading-relaxed dark:text-gray-300">Summoning a new prophecy from the ether...</p>
                 </div>
-                <div id="errorDisplay" class="hidden mt-4 text-red-600 bg-red-100 p-3 rounded-md"></div>
+                <div id="errorDisplay" class="hidden mt-4 text-red-600 bg-red-100 p-3 rounded-md dark:text-red-300 dark:bg-red-900"></div>
             </div>
              <div class="text-center mt-6">
-                <button id="historyBtn" class="bg-gray-700 hover:bg-gray-900 text-white font-bold py-2 px-6 rounded-lg transition-transform transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-gray-300">
+                <button id="historyBtn" class="bg-gray-700 hover:bg-gray-900 text-white font-bold py-2 px-6 rounded-lg transition-transform transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-gray-300 dark:bg-orange-600 dark:hover:bg-orange-700 dark:focus:ring-orange-800">
                     View Prompt Archive
                 </button>
             </div>
         </main>
 
-        <footer class="text-center mt-12 text-gray-500">
+        <footer class="text-center mt-12 text-gray-500 dark:text-gray-400">
             <p>&copy; 2025 Run & Write. A sanctuary for the written word.</p>
         </footer>
+
+        <!-- The Theme Toggle Button is added here -->
+        <div class="absolute top-4 right-4">
+            <button id="themeToggleBtn" class="p-2 rounded-full bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-600 transition focus:outline-none focus:ring-2 focus:ring-orange-500">
+                <svg id="themeIconSun" class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
+                <svg id="themeIconMoon" class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path></svg>
+            </button>
+        </div>
     </div>
     
-    <!-- History Modal -->
+    <!-- History Modal with dark mode classes -->
     <div id="historyModal" class="hidden fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4 z-50 transition-opacity duration-300">
-        <div class="bg-white rounded-lg shadow-2xl p-6 w-full max-w-2xl max-h-[80vh] flex flex-col transform transition-transform duration-300 scale-95">
-            <div class="flex justify-between items-center mb-4 border-b pb-3">
-                <h2 class="text-2xl font-bold text-gray-800">Prompt Archive</h2>
-                <button id="closeHistoryBtn" class="text-gray-500 hover:text-gray-800 text-3xl leading-none">&times;</button>
+        <div class="bg-white rounded-lg shadow-2xl p-6 w-full max-w-2xl max-h-[80vh] flex flex-col transform transition-transform duration-300 scale-95 dark:bg-gray-800 dark:border dark:border-gray-700">
+            <div class="flex justify-between items-center mb-4 border-b pb-3 dark:border-gray-600">
+                <h2 class="text-2xl font-bold text-gray-800 dark:text-gray-100">Prompt Archive</h2>
+                <button id="closeHistoryBtn" class="text-gray-500 hover:text-gray-800 text-3xl leading-none dark:text-gray-400 dark:hover:text-white">&times;</button>
             </div>
             <div id="historyContent" class="overflow-y-auto space-y-4 pr-2">
-                <!-- History will now contain links to the permanent scrolls -->
+                <!-- History populated here -->
             </div>
         </div>
     </div>
@@ -75,8 +106,15 @@
         const historyModal = document.getElementById('historyModal');
         const closeHistoryBtn = document.getElementById('closeHistoryBtn');
         const historyContent = document.getElementById('historyContent');
+        
+        // New constants for our theme magic
+        const themeToggleBtn = document.getElementById('themeToggleBtn');
+        const htmlEl = document.documentElement;
+        const sunIcon = document.getElementById('themeIconSun');
+        const moonIcon = document.getElementById('themeIconMoon');
 
 
+        // --- This is the original, working prompt-fetching logic ---
         async function getPrompt() {
             try {
                 const body = {
@@ -108,12 +146,12 @@
             }
         }
         
+        // --- This is the original, working history-fetching logic ---
         async function getHistory() {
-            historyContent.innerHTML = '<p class="text-gray-500 text-center p-4">Summoning memories from the Great Library...</p>';
+            historyContent.innerHTML = '<p class="text-gray-500 dark:text-gray-400 text-center p-4">Summoning memories from the Great Library...</p>';
             historyModal.classList.remove('hidden');
             setTimeout(() => {
                 historyModal.querySelector('div').classList.remove('scale-95');
-                historyModal.classList.remove('opacity-0');
             }, 10);
 
 
@@ -133,33 +171,55 @@
                 historyContent.innerHTML = ''; 
 
                 if (history.length === 0) {
-                    historyContent.innerHTML = '<p class="text-gray-500 text-center p-4">The archives are quiet. No past prompts have been recorded.</p>';
+                    historyContent.innerHTML = '<p class="text-gray-500 dark:text-gray-400 text-center p-4">The archives are quiet. No past prompts have been recorded.</p>';
                 } else {
                     history.forEach(item => {
                         const promptEl = document.createElement('div');
-                        promptEl.className = 'p-4 border-b border-gray-200 last:border-b-0 fade-in';
-                        // The scribe now creates a link to the permanent scroll!
+                        promptEl.className = 'p-4 border-b border-gray-200 last:border-b-0 fade-in dark:border-gray-700';
                         promptEl.innerHTML = `
-                            <p class="text-sm font-semibold text-orange-600">${item.date}</p>
-                            <a href="/prompt/${item.date}" target="_blank" class="text-gray-700 mt-1 hover:text-orange-700 hover:underline">${item.prompt}</a>
+                            <p class="text-sm font-semibold text-orange-600 dark:text-orange-500">${item.date}</p>
+                            <a href="/prompt/${item.date}" target="_blank" class="text-gray-700 mt-1 hover:text-orange-700 hover:underline dark:text-gray-300 dark:hover:text-orange-400">${item.prompt}</a>
                         `;
                         historyContent.appendChild(promptEl);
                     });
                 }
 
             } catch (error) {
-                historyContent.innerHTML = `<div class="p-4"><p class="text-red-500 font-semibold">A scroll was burnt in transit. Could not retrieve the archives.</p><p class="text-sm text-gray-600 mt-1">${error.message}</p></div>`;
+                historyContent.innerHTML = `<div class="p-4"><p class="text-red-500 font-semibold">A scroll was burnt in transit. Could not retrieve the archives.</p><p class="text-sm text-gray-600 dark:text-gray-400 mt-1">${error.message}</p></div>`;
             }
         }
 
         function closeHistoryModal() {
             historyModal.querySelector('div').classList.add('scale-95');
-            historyModal.classList.add('opacity-0');
             setTimeout(() => {
                 historyModal.classList.add('hidden');
             }, 300);
         }
 
+        // --- These are the new, working theme magic functions ---
+        function syncThemeUI() {
+            const isDark = htmlEl.classList.contains('dark');
+            if (isDark) {
+                sunIcon.style.display = 'block';
+                moonIcon.style.display = 'none';
+            } else {
+                sunIcon.style.display = 'none';
+                moonIcon.style.display = 'block';
+            }
+        }
+
+        function toggleTheme() {
+            if (htmlEl.classList.contains('dark')) {
+                htmlEl.classList.remove('dark');
+                localStorage.setItem('theme', 'light');
+            } else {
+                htmlEl.classList.add('dark');
+                localStorage.setItem('theme', 'dark');
+            }
+            syncThemeUI();
+        }
+
+        // --- Event Listeners for all functionality ---
         historyBtn.addEventListener('click', getHistory);
         closeHistoryBtn.addEventListener('click', closeHistoryModal);
         historyModal.addEventListener('click', (event) => {
@@ -167,8 +227,12 @@
                 closeHistoryModal();
             }
         });
+        themeToggleBtn.addEventListener('click', toggleTheme);
 
-        document.addEventListener('DOMContentLoaded', getPrompt);
+        document.addEventListener('DOMContentLoaded', () => {
+            getPrompt();
+            syncThemeUI(); // We sync the theme icon on page load
+        });
     </script>
 </body>
 </html>
