@@ -7,7 +7,8 @@ export default function WritingArea({
     onWordCountChange,
     initialGoal,
     onGoalMet,
-    isGoalMet
+    isGoalMet,
+    date // New prop for handling specific draft dates
 }) {
     const { data: session } = useSession();
     const [isOpen, setIsOpen] = useState(false);
@@ -21,13 +22,14 @@ export default function WritingArea({
     const sprintIntervalRef = useRef(null);
     const saveTimeoutRef = useRef(null);
 
+    // Use passed date or fallback to today
+    const activeDate = date || new Date().toISOString().split('T')[0];
+
     // Initial load
     useEffect(() => {
-        const todayDate = new Date().toISOString().split('T')[0];
-
         if (session) {
             // Load from Cloud if logged in
-            fetch(`/api/draft?date=${todayDate}`)
+            fetch(`/api/draft?date=${activeDate}`)
                 .then(res => res.json())
                 .then(data => {
                     if (data.text) {
@@ -38,12 +40,10 @@ export default function WritingArea({
                 .catch(console.error);
         } else if (typeof window !== 'undefined') {
             // Load from LocalStorage if not logged in
-            const d = new Date();
-            const year = d.getFullYear();
-            const month = String(d.getMonth() + 1).padStart(2, '0');
-            const day = String(d.getDate()).padStart(2, '0');
-            const key = `draft-${year}-${month}-${day}`;
+            // Logic: If a date is passed, load THAT date. If not, load today's.
+            // Note: Legacy local storage logic was simple, let's adapt it.
 
+            const key = `draft-${activeDate}`;
             const savedDraft = localStorage.getItem(key);
             if (savedDraft) {
                 setText(savedDraft);
@@ -55,20 +55,13 @@ export default function WritingArea({
              const storedGoal = localStorage.getItem('dailyWordGoal');
              if (storedGoal) setDailyGoal(parseInt(storedGoal, 10));
         }
-    }, [session]);
+    }, [session, activeDate]);
 
     // Save draft on change
     useEffect(() => {
-        const d = new Date();
-        const year = d.getFullYear();
-        const month = String(d.getMonth() + 1).padStart(2, '0');
-        const day = String(d.getDate()).padStart(2, '0');
-        const dateStr = `${year}-${month}-${day}`;
-        const todayDate = d.toISOString().split('T')[0];
-
         // Always save to local storage as backup
         if (typeof window !== 'undefined') {
-             const key = `draft-${dateStr}`;
+             const key = `draft-${activeDate}`;
              localStorage.setItem(key, text);
         }
 
@@ -82,9 +75,11 @@ export default function WritingArea({
                     const res = await fetch('/api/draft', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ date: todayDate, text })
+                        body: JSON.stringify({ date: activeDate, text })
                     });
                     if (res.ok) {
+                        // We could update stats here if the API returned them,
+                        // but profile fetches them separately.
                         setSaveStatus('saved');
                     } else {
                         setSaveStatus('error');
@@ -96,7 +91,7 @@ export default function WritingArea({
         }
 
         onWordCountChange(getWordCount(text));
-    }, [text, session]);
+    }, [text, session, activeDate]);
 
     function getWordCount(str) {
         if (!str) return 0;
@@ -168,10 +163,8 @@ export default function WritingArea({
         const blob = new Blob([text], { type: 'text/plain' });
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
-        const d = new Date();
-        const dateKey = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
         link.href = url;
-        link.download = `run-write-${dateKey}.txt`;
+        link.download = `run-write-${activeDate}.txt`;
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
@@ -198,15 +191,17 @@ export default function WritingArea({
             </button>
 
             {isOpen && (
-                <div className="mt-4 space-y-6 bg-orange-50 rounded-lg border border-orange-200 p-4 dark:bg-gray-700 dark:border-gray-600 fade-in">
+                <div className="mt-4 space-y-6 bg-orange-50 rounded-lg border border-orange-200 p-4 dark:bg-gray-700 dark:border-gray-600 fade-in text-left">
                      <div className="flex justify-between items-center mb-2">
-                        <label htmlFor="writingArea" className="block text-sm font-semibold text-gray-700 dark:text-gray-200">Draft your response</label>
+                        <label htmlFor="writingArea" className="block text-sm font-semibold text-gray-700 dark:text-gray-200">
+                            Drafting for {activeDate}
+                        </label>
                         {session ? (
                             <div className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400">
                                 {saveStatus === 'saving' && <><Loader2 size={14} className="animate-spin" /> Saving...</>}
-                                {saveStatus === 'saved' && <><Cloud size={14} /> Saved to Cloud</>}
+                                {saveStatus === 'saved' && <><Cloud size={14} /> Saved</>}
                                 {saveStatus === 'error' && <><CloudOff size={14} className="text-red-500" /> Save Failed</>}
-                                {saveStatus === 'unsaved' && <span className="italic">Unsaved changes...</span>}
+                                {saveStatus === 'unsaved' && <span className="italic">Unsaved...</span>}
                             </div>
                         ) : (
                             <div className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400">
@@ -218,7 +213,7 @@ export default function WritingArea({
                         id="writingArea"
                         rows="8"
                         className="w-full p-3 border border-orange-200 rounded-md focus:ring-2 focus:ring-orange-400 focus:border-orange-400 resize-none dark:bg-gray-800 dark:border-gray-600 dark:text-gray-100"
-                        placeholder="Let the words flow..."
+                        placeholder={`Write something for ${activeDate}...`}
                         value={text}
                         onChange={(e) => setText(e.target.value)}
                     ></textarea>

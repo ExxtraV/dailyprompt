@@ -3,9 +3,27 @@ import { useSession } from 'next-auth/react';
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
+import { useEffect, useState } from 'react';
 
 export default function ProfilePage() {
     const { data: session, status } = useSession();
+    const [stats, setStats] = useState({ streak: 0, totalWords: 0, badges: [] });
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        if (session) {
+            fetch('/api/user/stats')
+                .then(res => res.json())
+                .then(data => {
+                    if (data.stats) setStats(data.stats);
+                    setLoading(false);
+                })
+                .catch(err => {
+                    console.error(err);
+                    setLoading(false);
+                });
+        }
+    }, [session]);
 
     if (status === "loading") {
         return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
@@ -41,26 +59,40 @@ export default function ProfilePage() {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
                     <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow border border-gray-200 dark:border-gray-700 text-center">
                         <h3 className="text-lg font-semibold text-gray-500 dark:text-gray-400">Current Streak</h3>
-                        <p className="text-4xl font-black text-orange-600 dark:text-orange-500 mt-2">0</p>
+                        <p className="text-4xl font-black text-orange-600 dark:text-orange-500 mt-2">{stats.streak}</p>
                         <p className="text-sm text-gray-400 mt-1">days</p>
                     </div>
                     <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow border border-gray-200 dark:border-gray-700 text-center">
                         <h3 className="text-lg font-semibold text-gray-500 dark:text-gray-400">Total Words</h3>
-                        <p className="text-4xl font-black text-blue-600 dark:text-blue-500 mt-2">0</p>
+                        <p className="text-4xl font-black text-blue-600 dark:text-blue-500 mt-2">{stats.totalWords}</p>
                         <p className="text-sm text-gray-400 mt-1">written</p>
                     </div>
                     <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow border border-gray-200 dark:border-gray-700 text-center">
                         <h3 className="text-lg font-semibold text-gray-500 dark:text-gray-400">Badges Earned</h3>
-                        <p className="text-4xl font-black text-purple-600 dark:text-purple-500 mt-2">0</p>
+                        <p className="text-4xl font-black text-purple-600 dark:text-purple-500 mt-2">{stats.badges.length}</p>
                         <p className="text-sm text-gray-400 mt-1">trophies</p>
                     </div>
                 </div>
 
                 <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-8 border border-gray-200 dark:border-gray-700">
                     <h2 className="text-2xl font-bold mb-6">Achievements</h2>
-                    <div className="text-center py-12 text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-900 rounded-lg border-dashed border-2 border-gray-200 dark:border-gray-700">
-                        <p>Start writing to unlock badges!</p>
-                    </div>
+                    {stats.badges.length > 0 ? (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                            {stats.badges.map(badge => (
+                                <div key={badge.id} className="p-4 border border-gray-100 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-900 flex items-center gap-4">
+                                    <span className="text-3xl">{badge.icon}</span>
+                                    <div>
+                                        <h4 className="font-bold text-gray-900 dark:text-white">{badge.name}</h4>
+                                        <p className="text-xs text-gray-500 dark:text-gray-400">{badge.description}</p>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    ) : (
+                        <div className="text-center py-12 text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-900 rounded-lg border-dashed border-2 border-gray-200 dark:border-gray-700">
+                            <p>Start writing to unlock badges!</p>
+                        </div>
+                    )}
                 </div>
             </div>
         </div>

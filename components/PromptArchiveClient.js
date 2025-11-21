@@ -2,9 +2,13 @@
 import { useState } from 'react';
 import { Copy, Check, Share2, ArrowLeft, ChevronLeft, ChevronRight } from 'lucide-react';
 import Link from 'next/link';
+import WritingArea from './WritingArea';
+import AuthButton from './AuthButton';
+import ThemeToggle from './ThemeToggle';
 
 export default function PromptArchiveClient({ prompt, date, prevDateStr, nextDateStr, prevPromptExists, nextPromptExists }) {
     const [copied, setCopied] = useState(false);
+    const [isGoalMet, setIsGoalMet] = useState(false); // Archive pages track goal state locally for now
 
     const copyToClipboard = () => {
         navigator.clipboard.writeText(prompt).then(() => {
@@ -13,33 +17,54 @@ export default function PromptArchiveClient({ prompt, date, prevDateStr, nextDat
         });
     };
 
+    const handleWordCountChange = (count) => {
+        // Logic for goals on archive pages could be added here
+    };
+
     return (
-        <div className="flex flex-col items-center justify-center min-h-screen p-4">
-             <main className="w-full max-w-2xl bg-white rounded-xl shadow-lg p-8 border border-gray-200 text-center dark:bg-gray-800 dark:border-gray-700">
-                <p className="text-sm font-semibold text-orange-600 dark:text-orange-500">A Prophecy From The Archives</p>
-                <h1 className="text-3xl font-black text-gray-900 mt-2 dark:text-gray-100">Writing Prompt: {date}</h1>
-                <div id="prompt" className="mt-8 text-3xl text-gray-800 leading-relaxed font-semibold dark:text-gray-300">
-                    <p>{prompt}</p>
+        <div className="flex flex-col items-center justify-center min-h-screen p-4 relative">
+             <div className="absolute top-4 left-4 z-10">
+                <AuthButton />
+            </div>
+            <ThemeToggle />
+
+             <main className="w-full max-w-2xl bg-white rounded-xl shadow-lg p-8 border border-gray-200 dark:bg-gray-800 dark:border-gray-700">
+                <div className="text-center">
+                    <p className="text-sm font-semibold text-orange-600 dark:text-orange-500">A Prophecy From The Archives</p>
+                    <h1 className="text-3xl font-black text-gray-900 mt-2 dark:text-gray-100">Writing Prompt: {date}</h1>
+                    <div id="prompt" className="mt-8 text-3xl text-gray-800 leading-relaxed font-semibold dark:text-gray-300">
+                        <p>{prompt}</p>
+                    </div>
+
+                    <div className="mt-8 flex justify-center items-center gap-3 mb-8">
+                        <button
+                            onClick={copyToClipboard}
+                            className={`flex items-center gap-2 font-semibold py-2 px-4 rounded-lg transition ${copied ? 'bg-green-200 text-green-800' : 'bg-gray-100 hover:bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600'}`}
+                        >
+                            {copied ? <Check size={20} /> : <Copy size={20} />}
+                            <span>{copied ? 'Copied!' : 'Copy'}</span>
+                        </button>
+                        <a
+                            href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(`Writing prompt: "${prompt}"`)}&url=${encodeURIComponent(`https://prompt.run-write.com/prompt/${date}`)}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center gap-2 bg-blue-400 hover:bg-blue-500 text-white font-semibold py-2 px-4 rounded-lg transition"
+                        >
+                            <Share2 size={20} />
+                            <span>Share</span>
+                        </a>
+                    </div>
                 </div>
 
-                <div className="mt-8 flex justify-center items-center gap-3">
-                    <button
-                        onClick={copyToClipboard}
-                        className={`flex items-center gap-2 font-semibold py-2 px-4 rounded-lg transition ${copied ? 'bg-green-200 text-green-800' : 'bg-gray-100 hover:bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600'}`}
-                    >
-                        {copied ? <Check size={20} /> : <Copy size={20} />}
-                        <span>{copied ? 'Copied!' : 'Copy'}</span>
-                    </button>
-                    <a
-                        href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(`Writing prompt: "${prompt}"`)}&url=${encodeURIComponent(`https://prompt.run-write.com/prompt/${date}`)}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center gap-2 bg-blue-400 hover:bg-blue-500 text-white font-semibold py-2 px-4 rounded-lg transition"
-                    >
-                        <Share2 size={20} />
-                        <span>Share</span>
-                    </a>
-                </div>
+                {/* Writing Area for Archive */}
+                <WritingArea
+                    onWordCountChange={handleWordCountChange}
+                    initialGoal={0}
+                    onGoalMet={() => setIsGoalMet(true)}
+                    isGoalMet={isGoalMet}
+                    date={date} // Pass the specific archive date
+                />
+
             </main>
 
             <nav className="w-full max-w-2xl mt-4 flex justify-between items-center">
