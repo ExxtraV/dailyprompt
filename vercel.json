@@ -1,9 +1,0 @@
-{
-  "rewrites": [
-    {
-      "source": "/prompt/:date",
-      "destination": "/api/prompt/[date]"
-    }
-  ]
-}
-
