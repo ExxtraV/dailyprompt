@@ -1,6 +1,6 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
-import { ChevronDown, ChevronUp, Cloud, CloudOff, Loader2, Globe } from 'lucide-react';
+import { ChevronDown, ChevronUp, Cloud, CloudOff, Loader2, Globe, XCircle } from 'lucide-react';
 import { useSession } from 'next-auth/react';
 
 export default function WritingArea({
@@ -67,13 +67,10 @@ export default function WritingArea({
             saveTimeoutRef.current = setTimeout(async () => {
                 setSaveStatus('saving');
                 try {
-                    // Note: We don't auto-publish on save, only manually.
-                    // But if it WAS published, should we auto-update the published version?
-                    // For MVP, publishing is a manual action. We just save the draft text here.
                     const res = await fetch('/api/draft', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ date: activeDate, text }) // No published flag here
+                        body: JSON.stringify({ date: activeDate, text }) // Auto-save doesn't touch published state
                     });
                     if (res.ok) {
                         setSaveStatus('saved');
@@ -102,6 +99,26 @@ export default function WritingArea({
                 setSaveStatus('saved');
                 setIsPublished(true);
                 setExportStatus('Published to Community!');
+                setTimeout(() => setExportStatus(''), 3000);
+            }
+        } catch (e) {
+            setSaveStatus('error');
+        }
+    };
+
+    const handleUnpublish = async () => {
+        if (!session) return;
+        setSaveStatus('saving');
+        try {
+            const res = await fetch('/api/draft', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ date: activeDate, text, published: false })
+            });
+            if (res.ok) {
+                setSaveStatus('saved');
+                setIsPublished(false);
+                setExportStatus('Unpublished from Community.');
                 setTimeout(() => setExportStatus(''), 3000);
             }
         } catch (e) {
@@ -301,21 +318,23 @@ export default function WritingArea({
                             <button onClick={downloadDraft} className="w-full sm:w-auto bg-white text-gray-800 font-semibold py-2 px-4 rounded-md border border-gray-300 hover:bg-gray-50 transition dark:bg-gray-800 dark:text-gray-200 dark:border-gray-600">Download</button>
 
                             {session && (
-                                <button
-                                    onClick={handlePublish}
-                                    disabled={isPublished}
-                                    className={`w-full sm:w-auto font-semibold py-2 px-4 rounded-md transition flex items-center justify-center gap-2
-                                        ${isPublished
-                                            ? 'bg-green-100 text-green-800 cursor-default border border-green-200 dark:bg-green-900/30 dark:text-green-200 dark:border-green-800'
-                                            : 'bg-indigo-600 text-white hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600'
-                                        }`}
-                                >
+                                <>
                                     {isPublished ? (
-                                        <><Globe size={16} /> Published</>
+                                        <button
+                                            onClick={handleUnpublish}
+                                            className="w-full sm:w-auto font-semibold py-2 px-4 rounded-md transition flex items-center justify-center gap-2 bg-red-100 text-red-800 hover:bg-red-200 dark:bg-red-900/30 dark:text-red-200 dark:hover:bg-red-900/50 border border-red-200 dark:border-red-800"
+                                        >
+                                            <XCircle size={16} /> Unpublish
+                                        </button>
                                     ) : (
-                                        <><Globe size={16} /> Publish to Community</>
+                                        <button
+                                            onClick={handlePublish}
+                                            className="w-full sm:w-auto font-semibold py-2 px-4 rounded-md transition flex items-center justify-center gap-2 bg-indigo-600 text-white hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600"
+                                        >
+                                            <Globe size={16} /> Publish to Community
+                                        </button>
                                     )}
-                                </button>
+                                </>
                             )}
                         </div>
                         <p className="text-sm text-gray-600 mt-2 dark:text-gray-300">{exportStatus}</p>

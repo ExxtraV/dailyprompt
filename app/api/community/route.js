@@ -5,22 +5,19 @@ export const dynamic = 'force-dynamic';
 
 export async function GET() {
     try {
-        // Fetch last 20 items
-        const feedRaw = await redis.lrange('community:feed', 0, 19);
+        // 1. Fetch last 20 IDs from ZSET (Reverse order: newest first)
+        const postKeys = await redis.zrange('community:feed:ids', 0, 19, { rev: true });
 
-        const feed = feedRaw.map(item => {
-            // Upstash Redis client might auto-parse JSON, or return strings.
-            // We handle both cases to be robust.
-            if (typeof item === 'object' && item !== null) {
-                return item;
-            }
-            try {
-                return JSON.parse(item);
-            } catch (e) {
-                console.error("Failed to parse feed item:", item);
-                return null;
-            }
-        }).filter(Boolean);
+        if (postKeys.length === 0) {
+            return NextResponse.json([]);
+        }
+
+        // 2. Fetch content for these keys
+        const posts = await redis.mget(...postKeys);
+
+        // 3. Filter and format
+        // Upstash MGET returns an array of values (objects if JSON, or strings)
+        const feed = posts.filter(Boolean);
 
         return NextResponse.json(feed);
     } catch (error) {

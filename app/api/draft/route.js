@@ -20,16 +20,11 @@ export async function GET(request) {
     const key = `user:${session.user.id}:draft:${date}`;
     const draft = await redis.get(key);
 
-    // Also check if it was published
-    // (Optional optimization: store isPublished in a key or return based on feed presence)
-    // For MVP, we assume client state manages the toggle until reload,
-    // OR we store metadata. Let's store metadata in a separate key or JSON.
-    // MVP: Just return text. Client will default to unpublished on reload (minor UX issue)
-    // Better: Store `user:{id}:meta:{date}` -> { published: true }
-    const metaKey = `user:${session.user.id}:meta:${date}`;
-    const meta = await redis.get(metaKey) || {};
+    // Check published state via Post key
+    const postKey = `post:${session.user.id}:${date}`;
+    const postExists = await redis.exists(postKey);
 
-    return NextResponse.json({ text: draft || '', published: meta.published || false });
+    return NextResponse.json({ text: draft || '', published: postExists === 1 });
 }
 
 export async function POST(request) {
@@ -47,34 +42,58 @@ export async function POST(request) {
 
     const userId = session.user.id;
     const draftKey = `user:${userId}:draft:${date}`;
-    const metaKey = `user:${userId}:meta:${date}`;
+    const postKey = `post:${userId}:${date}`; // Stores the feed item content
+    const feedId = `${userId}:${date}`;
 
-    // 1. Save draft
+    // 1. Save draft (Always save the raw text to the user's private draft)
     await redis.set(draftKey, text);
 
-    // Save Metadata (Published state)
-    if (published !== undefined) {
-        await redis.set(metaKey, { published });
+    // 2. Handle Publishing / Unpublishing / Updating
+    if (published === true) {
+        const feedItem = {
+            id: feedId,
+            userId: userId,
+            userName: session.user.name,
+            userImage: session.user.image,
+            date: date,
+            text: text,
+            publishedAt: Date.now()
+        };
 
-        if (published) {
-            // Add to Community Feed
-            const feedItem = {
-                id: `${userId}-${date}`,
+        // Update content
+        await redis.set(postKey, feedItem);
+        // Ensure it is in the feed (Update score to now to bump? Or keep original time? Let's bump for now or keep original)
+        // Ideally: Keep original publish time if just editing.
+        // We can check if it exists in ZSET. For MVP, let's just add/update score to NOW (bump to top on edit).
+        await redis.zadd('community:feed:ids', { score: Date.now(), member: postKey });
+
+    } else if (published === false) {
+        // Unpublish
+        await redis.del(postKey);
+        await redis.zrem('community:feed:ids', postKey);
+    }
+    // If published is undefined, we assume it's a draft save.
+    // If the post ALREADY exists (was published), we should update the content silently without bumping score?
+    // Or should we require explicit 're-publish'?
+    // Let's auto-update content if it IS published.
+    else {
+        const isPublished = await redis.exists(postKey);
+        if (isPublished) {
+             const feedItem = {
+                id: feedId,
                 userId: userId,
                 userName: session.user.name,
                 userImage: session.user.image,
                 date: date,
-                text: text, // Store full text or snippet? Let's store full for now.
-                publishedAt: Date.now()
+                text: text,
+                publishedAt: Date.now() // Updating timestamp? Maybe preserve?
             };
-            // Push to list (Head)
-            await redis.lpush('community:feed', JSON.stringify(feedItem));
-            // Trim list to keep only last 100 items to save space
-            await redis.ltrim('community:feed', 0, 99);
+            // Update the content, do NOT touch the ZSET score (maintains feed position)
+            await redis.set(postKey, feedItem);
         }
     }
 
-    // 2. Calculate Stats
+    // 3. Calculate Stats
     const wordCount = text.trim().split(/\s+/).length || 0;
 
     if (wordCount > 5) {
@@ -90,14 +109,13 @@ export async function POST(request) {
         await redis.set(dailyWordCountKey, wordCount);
     }
 
-    // 4. Calculate Streak (Simple Logic)
+    // 4. Calculate Streak
     const activityDates = await redis.smembers(`user:${userId}:activity`);
     const dateSet = new Set(activityDates);
 
     let currentStreak = 0;
     let cursor = new Date();
 
-    // Check today and go backwards
     while (true) {
         const dStr = cursor.toISOString().split('T')[0];
         if (dateSet.has(dStr)) {
