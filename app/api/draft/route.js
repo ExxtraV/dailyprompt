@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
-import { authOptions } from '../auth/[...nextauth]/route';
+import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { redis } from '@/lib/redis';
 
 export async function GET(request) {
@@ -39,13 +39,6 @@ export async function POST(request) {
 
     // Save draft
     await redis.set(key, text);
-
-    // Update total word count stat (incremental approximation or re-calc)
-    // For accurate stats, we might just store the raw text and calc on fly,
-    // or store a separate counter. Let's store a separate counter for "Total Words Written"
-    // This is complex because we overwrite drafts.
-    // Simplified approach for now: Just save the draft.
-    // We will handle complex stats in the "Complete" action or just sum drafts later.
 
     return NextResponse.json({ success: true });
 }
