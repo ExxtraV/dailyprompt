@@ -1,5 +1,7 @@
 import { redis } from '@/lib/redis';
 
+export const dynamic = 'force-dynamic';
+
 export default async function sitemap() {
   const baseUrl = 'https://run-write.com';
 
@@ -14,8 +16,7 @@ export default async function sitemap() {
   ];
 
   try {
-    // If we are in a build environment without real credentials, this might fail or return nothing.
-    // We catch the error to ensure the build passes.
+    // Attempt to fetch if credentials exist, otherwise return static routes (e.g. during build)
     if (process.env.MANUAL_UPSTASH_URL && !process.env.MANUAL_UPSTASH_URL.includes('mock-url')) {
         const keys = await redis.keys('prompt:*');
         const promptRoutes = keys.map((key) => {
@@ -32,7 +33,7 @@ export default async function sitemap() {
     return routes;
 
   } catch (error) {
-    console.warn('Sitemap generation failed to connect to Redis (expected during build without env vars):', error.message);
+    console.warn('Sitemap generation failed to connect to Redis:', error.message);
     return routes;
   }
 }
