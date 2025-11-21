@@ -2,13 +2,16 @@
 import { useSession } from 'next-auth/react';
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Edit2, Check, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 export default function ProfilePage() {
     const { data: session, status } = useSession();
     const [stats, setStats] = useState({ streak: 0, totalWords: 0, badges: [] });
     const [loading, setLoading] = useState(true);
+    const [isEditing, setIsEditing] = useState(false);
+    const [newName, setNewName] = useState('');
+    const [profileUser, setProfileUser] = useState(null);
 
     useEffect(() => {
         if (session) {
@@ -16,6 +19,10 @@ export default function ProfilePage() {
                 .then(res => res.json())
                 .then(data => {
                     if (data.stats) setStats(data.stats);
+                    if (data.user) {
+                        setProfileUser(data.user);
+                        setNewName(data.user.name || '');
+                    }
                     setLoading(false);
                 })
                 .catch(err => {
@@ -24,6 +31,25 @@ export default function ProfilePage() {
                 });
         }
     }, [session]);
+
+    const handleSaveName = async () => {
+        try {
+            const res = await fetch('/api/user/profile', {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name: newName })
+            });
+            if (res.ok) {
+                setProfileUser({ ...profileUser, name: newName });
+                setIsEditing(false);
+                // Ideally trigger a session reload, but we rely on our local state for immediate feedback
+            } else {
+                alert('Failed to update name');
+            }
+        } catch (e) {
+            alert('Error updating name');
+        }
+    };
 
     if (status === "loading") {
         return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
@@ -42,16 +68,37 @@ export default function ProfilePage() {
 
                 <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-8 border border-gray-200 dark:border-gray-700 mb-8">
                     <div className="flex items-center gap-6">
-                        {session?.user?.image && (
+                        {profileUser?.image && (
                             <img
-                                src={session.user.image}
-                                alt={session.user.name}
+                                src={profileUser.image}
+                                alt={profileUser.name}
                                 className="w-24 h-24 rounded-full border-4 border-orange-100 dark:border-gray-700"
                             />
                         )}
-                        <div>
-                            <h1 className="text-3xl font-black text-gray-900 dark:text-white">{session?.user?.name}</h1>
-                            <p className="text-gray-500 dark:text-gray-400">{session?.user?.email}</p>
+                        <div className="flex-1">
+                            {isEditing ? (
+                                <div className="flex items-center gap-2">
+                                    <input
+                                        type="text"
+                                        value={newName}
+                                        onChange={(e) => setNewName(e.target.value)}
+                                        className="text-3xl font-black text-gray-900 dark:text-white bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-2 py-1 w-full max-w-md"
+                                    />
+                                    <button onClick={handleSaveName} className="p-2 bg-green-500 text-white rounded hover:bg-green-600"><Check size={20}/></button>
+                                    <button onClick={() => setIsEditing(false)} className="p-2 bg-red-500 text-white rounded hover:bg-red-600"><X size={20}/></button>
+                                </div>
+                            ) : (
+                                <div className="flex items-center gap-3 group">
+                                    <h1 className="text-3xl font-black text-gray-900 dark:text-white">{profileUser?.name}</h1>
+                                    <button
+                                        onClick={() => setIsEditing(true)}
+                                        className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 opacity-0 group-hover:opacity-100 transition"
+                                    >
+                                        <Edit2 size={18} />
+                                    </button>
+                                </div>
+                            )}
+                            <p className="text-gray-500 dark:text-gray-400">{profileUser?.email}</p>
                         </div>
                     </div>
                 </div>

@@ -16,11 +16,19 @@ export async function GET(request) {
     const totalWords = await redis.get(`user:${userId}:stats:totalWords`) || 0;
     const userBadges = await redis.smembers(`user:${userId}:badges`);
 
+    // Fetch Fresh User Data (Name might have changed)
+    const userData = await redis.get(`user:${userId}`);
+    let displayUser = session.user;
+
+    if (userData && userData.name) {
+        displayUser = { ...session.user, name: userData.name };
+    }
+
     // Hydrate badges with metadata
     const earnedBadges = BADGES.filter(b => userBadges.includes(b.id));
 
     return NextResponse.json({
-        user: session.user,
+        user: displayUser,
         stats: {
             streak: parseInt(streak, 10),
             totalWords: parseInt(totalWords, 10),

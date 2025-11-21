@@ -60,16 +60,24 @@ export default function CommunityPage() {
                                 </div>
                                 <Link
                                     href={`/prompt/${item.date}`}
-                                    className="text-sm font-semibold text-orange-600 hover:text-orange-700 dark:text-orange-500 dark:hover:text-orange-400"
+                                    className="text-xs text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
                                 >
-                                    View Prompt
+                                    Prompt Context
                                 </Link>
                             </div>
 
-                            <div className="prose dark:prose-invert max-w-none">
-                                <p className="whitespace-pre-wrap text-gray-700 dark:text-gray-300 leading-relaxed">
+                            <div className="prose dark:prose-invert max-w-none relative">
+                                <p className="text-gray-700 dark:text-gray-300 leading-relaxed line-clamp-3">
                                     {item.text}
                                 </p>
+                                <div className="mt-4">
+                                    <Link
+                                        href={`/community/${item.id.replace(':', '-')}`} // Ensure safe URL slug if ID has colons
+                                        className="inline-flex items-center text-sm font-bold text-orange-600 hover:text-orange-700 dark:text-orange-500 dark:hover:text-orange-400"
+                                    >
+                                        Read full story &rarr;
+                                    </Link>
+                                </div>
                             </div>
                         </div>
                     ))}
