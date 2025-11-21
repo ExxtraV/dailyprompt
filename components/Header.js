@@ -1,7 +1,7 @@
 export default function Header({ streak }) {
     return (
         <header className="text-center mb-8">
-            <h1 className="text-5xl font-black text-gray-900 dark:text-gray-100">Run & Write</h1>
+            <h1 className="text-5xl font-black text-gray-900 dark:text-gray-100 mt-8 sm:mt-0">Run & Write</h1>
             <p className="text-lg text-gray-600 mt-2 dark:text-gray-400">Your Daily Dose of Creative Inspiration</p>
             <div className="mt-4">
                 <a href="https://www.run-write.com" className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-orange-500 rounded-lg shadow hover:bg-orange-600 focus:outline-none focus:ring-4 focus:ring-orange-200 dark:bg-orange-600 dark:hover:bg-orange-700 dark:focus:ring-orange-800">
