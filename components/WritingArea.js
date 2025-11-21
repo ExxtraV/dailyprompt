@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
-import { ChevronDown, ChevronUp } from 'lucide-react';
+import { ChevronDown, ChevronUp, Cloud, CloudOff, Loader2 } from 'lucide-react';
+import { useSession } from 'next-auth/react';
 
 export default function WritingArea({
     onWordCountChange,
@@ -8,6 +9,7 @@ export default function WritingArea({
     onGoalMet,
     isGoalMet
 }) {
+    const { data: session } = useSession();
     const [isOpen, setIsOpen] = useState(false);
     const [text, setText] = useState('');
     const [dailyGoal, setDailyGoal] = useState(initialGoal || 0);
@@ -15,46 +17,86 @@ export default function WritingArea({
     const [sprintEndTime, setSprintEndTime] = useState(null);
     const [sprintStatus, setSprintStatus] = useState('Ready when you are.');
     const [exportStatus, setExportStatus] = useState('');
+    const [saveStatus, setSaveStatus] = useState('saved'); // 'saved', 'saving', 'unsaved', 'error'
     const sprintIntervalRef = useRef(null);
+    const saveTimeoutRef = useRef(null);
 
-    // Initial load from local storage
+    // Initial load
     useEffect(() => {
-        if (typeof window !== 'undefined') {
-            // Restore draft
-            const dateKey = new Date().toISOString().split('T')[0]; // Use simple local date part
-            const draftKey = `draft-${dateKey}`; // Ideally match the exact logic of old app if backward compat needed
-            // Actually, the old app used getLocalDateKey() which used local time.
-            // Let's stick to a simple key for now or try to match.
-            // Old: `${year}-${month}-${day}` padded.
+        const todayDate = new Date().toISOString().split('T')[0];
+
+        if (session) {
+            // Load from Cloud if logged in
+            fetch(`/api/draft?date=${todayDate}`)
+                .then(res => res.json())
+                .then(data => {
+                    if (data.text) {
+                        setText(data.text);
+                        setIsOpen(true);
+                    }
+                })
+                .catch(console.error);
+        } else if (typeof window !== 'undefined') {
+            // Load from LocalStorage if not logged in
             const d = new Date();
             const year = d.getFullYear();
             const month = String(d.getMonth() + 1).padStart(2, '0');
             const day = String(d.getDate()).padStart(2, '0');
-            const oldKey = `draft-${year}-${month}-${day}`;
+            const key = `draft-${year}-${month}-${day}`;
 
-            const savedDraft = localStorage.getItem(oldKey);
+            const savedDraft = localStorage.getItem(key);
             if (savedDraft) {
                 setText(savedDraft);
                 setIsOpen(true);
             }
-
-            const storedGoal = localStorage.getItem('dailyWordGoal');
-            if (storedGoal) setDailyGoal(parseInt(storedGoal, 10));
         }
-    }, []);
+
+        if (typeof window !== 'undefined') {
+             const storedGoal = localStorage.getItem('dailyWordGoal');
+             if (storedGoal) setDailyGoal(parseInt(storedGoal, 10));
+        }
+    }, [session]);
 
     // Save draft on change
     useEffect(() => {
+        const d = new Date();
+        const year = d.getFullYear();
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        const dateStr = `${year}-${month}-${day}`;
+        const todayDate = d.toISOString().split('T')[0];
+
+        // Always save to local storage as backup
         if (typeof window !== 'undefined') {
-             const d = new Date();
-             const year = d.getFullYear();
-             const month = String(d.getMonth() + 1).padStart(2, '0');
-             const day = String(d.getDate()).padStart(2, '0');
-             const key = `draft-${year}-${month}-${day}`;
+             const key = `draft-${dateStr}`;
              localStorage.setItem(key, text);
         }
+
+        if (session) {
+            setSaveStatus('unsaved');
+            if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+
+            saveTimeoutRef.current = setTimeout(async () => {
+                setSaveStatus('saving');
+                try {
+                    const res = await fetch('/api/draft', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ date: todayDate, text })
+                    });
+                    if (res.ok) {
+                        setSaveStatus('saved');
+                    } else {
+                        setSaveStatus('error');
+                    }
+                } catch (e) {
+                    setSaveStatus('error');
+                }
+            }, 1000); // Debounce 1s
+        }
+
         onWordCountChange(getWordCount(text));
-    }, [text]);
+    }, [text, session]);
 
     function getWordCount(str) {
         if (!str) return 0;
@@ -157,17 +199,29 @@ export default function WritingArea({
 
             {isOpen && (
                 <div className="mt-4 space-y-6 bg-orange-50 rounded-lg border border-orange-200 p-4 dark:bg-gray-700 dark:border-gray-600 fade-in">
-                     <div>
-                        <label htmlFor="writingArea" className="block text-sm font-semibold text-gray-700 mb-2 dark:text-gray-200">Draft your response</label>
-                        <textarea
-                            id="writingArea"
-                            rows="8"
-                            className="w-full p-3 border border-orange-200 rounded-md focus:ring-2 focus:ring-orange-400 focus:border-orange-400 resize-none dark:bg-gray-800 dark:border-gray-600 dark:text-gray-100"
-                            placeholder="Let the words flow..."
-                            value={text}
-                            onChange={(e) => setText(e.target.value)}
-                        ></textarea>
+                     <div className="flex justify-between items-center mb-2">
+                        <label htmlFor="writingArea" className="block text-sm font-semibold text-gray-700 dark:text-gray-200">Draft your response</label>
+                        {session ? (
+                            <div className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400">
+                                {saveStatus === 'saving' && <><Loader2 size={14} className="animate-spin" /> Saving...</>}
+                                {saveStatus === 'saved' && <><Cloud size={14} /> Saved to Cloud</>}
+                                {saveStatus === 'error' && <><CloudOff size={14} className="text-red-500" /> Save Failed</>}
+                                {saveStatus === 'unsaved' && <span className="italic">Unsaved changes...</span>}
+                            </div>
+                        ) : (
+                            <div className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400">
+                                <span>Saved locally (Login to sync)</span>
+                            </div>
+                        )}
                     </div>
+                    <textarea
+                        id="writingArea"
+                        rows="8"
+                        className="w-full p-3 border border-orange-200 rounded-md focus:ring-2 focus:ring-orange-400 focus:border-orange-400 resize-none dark:bg-gray-800 dark:border-gray-600 dark:text-gray-100"
+                        placeholder="Let the words flow..."
+                        value={text}
+                        onChange={(e) => setText(e.target.value)}
+                    ></textarea>
 
                     <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                         <p className="text-sm font-medium text-gray-700 dark:text-gray-200">Word count: <span className="font-semibold">{currentWordCount}</span></p>
