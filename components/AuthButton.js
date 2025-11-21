@@ -1,7 +1,7 @@
 "use client";
 
 import { signIn, signOut, useSession } from "next-auth/react";
-import { LogIn, LogOut, User } from "lucide-react";
+import { LogIn, LogOut, User, Globe } from "lucide-react";
 import Link from 'next/link';
 import { useState } from 'react';
 
@@ -40,6 +40,14 @@ export default function AuthButton() {
                     <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{session.user.email}</p>
                 </div>
                 <Link
+                    href="/community"
+                    className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
+                    onClick={() => setIsOpen(false)}
+                >
+                    <Globe size={16} />
+                    Community Feed
+                </Link>
+                <Link
                     href="/profile"
                     className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
                     onClick={() => setIsOpen(false)}
@@ -61,12 +69,20 @@ export default function AuthButton() {
   }
 
   return (
-    <button
-      onClick={() => signIn("google")}
-      className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-blue-600 rounded-lg shadow hover:bg-blue-700 focus:outline-none focus:ring-4 focus:ring-blue-200 dark:focus:ring-blue-900 transition-transform transform hover:scale-105"
-    >
-      <LogIn size={18} />
-      Sign In
-    </button>
+    <div className="flex gap-4 items-center">
+        <Link
+            href="/community"
+            className="text-sm font-semibold text-gray-600 hover:text-orange-600 dark:text-gray-300 dark:hover:text-orange-400 hidden sm:block"
+        >
+            Community
+        </Link>
+        <button
+        onClick={() => signIn("google")}
+        className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-blue-600 rounded-lg shadow hover:bg-blue-700 focus:outline-none focus:ring-4 focus:ring-blue-200 dark:focus:ring-blue-900 transition-transform transform hover:scale-105"
+        >
+        <LogIn size={18} />
+        Sign In
+        </button>
+    </div>
   );
 }

@@ -20,7 +20,11 @@ export async function GET(request) {
     const key = `user:${session.user.id}:draft:${date}`;
     const draft = await redis.get(key);
 
-    return NextResponse.json({ text: draft || '' });
+    // Check published state via Post key
+    const postKey = `post:${session.user.id}:${date}`;
+    const postExists = await redis.exists(postKey);
+
+    return NextResponse.json({ text: draft || '', published: postExists === 1 });
 }
 
 export async function POST(request) {
@@ -30,7 +34,7 @@ export async function POST(request) {
     }
 
     const body = await request.json();
-    const { date, text } = body;
+    const { date, text, published } = body;
 
     if (!date || text === undefined) {
         return NextResponse.json({ message: 'Invalid payload' }, { status: 400 });
@@ -38,37 +42,63 @@ export async function POST(request) {
 
     const userId = session.user.id;
     const draftKey = `user:${userId}:draft:${date}`;
+    const postKey = `post:${userId}:${date}`; // Stores the feed item content
+    const feedId = `${userId}:${date}`;
 
-    // 1. Save draft
+    // 1. Save draft (Always save the raw text to the user's private draft)
     await redis.set(draftKey, text);
 
-    // 2. Calculate Stats
+    // 2. Handle Publishing / Unpublishing / Updating
+    if (published === true) {
+        const feedItem = {
+            id: feedId,
+            userId: userId,
+            userName: session.user.name,
+            userImage: session.user.image,
+            date: date,
+            text: text,
+            publishedAt: Date.now()
+        };
+
+        // Update content
+        await redis.set(postKey, feedItem);
+        // Ensure it is in the feed (Update score to now to bump? Or keep original time? Let's bump for now or keep original)
+        // Ideally: Keep original publish time if just editing.
+        // We can check if it exists in ZSET. For MVP, let's just add/update score to NOW (bump to top on edit).
+        await redis.zadd('community:feed:ids', { score: Date.now(), member: postKey });
+
+    } else if (published === false) {
+        // Unpublish
+        await redis.del(postKey);
+        await redis.zrem('community:feed:ids', postKey);
+    }
+    // If published is undefined, we assume it's a draft save.
+    // If the post ALREADY exists (was published), we should update the content silently without bumping score?
+    // Or should we require explicit 're-publish'?
+    // Let's auto-update content if it IS published.
+    else {
+        const isPublished = await redis.exists(postKey);
+        if (isPublished) {
+             const feedItem = {
+                id: feedId,
+                userId: userId,
+                userName: session.user.name,
+                userImage: session.user.image,
+                date: date,
+                text: text,
+                publishedAt: Date.now() // Updating timestamp? Maybe preserve?
+            };
+            // Update the content, do NOT touch the ZSET score (maintains feed position)
+            await redis.set(postKey, feedItem);
+        }
+    }
+
+    // 3. Calculate Stats
     const wordCount = text.trim().split(/\s+/).length || 0;
 
-    // Update activity set (dates user has written)
-    // We only count activity if they wrote something substantial (e.g., > 10 words)
-    // For now, let's count any save as activity to be generous, or maybe > 5 words.
     if (wordCount > 5) {
         await redis.sadd(`user:${userId}:activity`, date);
     }
-
-    // 3. Update Total Words (This is tricky because we are overwriting drafts)
-    // A simple incrementer `incrby` is dangerous if we save multiple times per draft.
-    // BETTER APPROACH: Store the word count of *this specific draft* in a separate key,
-    // and calculate total words by summing all draft word counts, OR:
-    // Keep a running total? No, running total breaks on edits.
-    // Compromise: We will just track "Total Words Written" as a monotonically increasing stat
-    // whenever they *finish* or *significantly update*.
-    // ACTUALLY: Let's just calculate total words on the fly or update a "max word count for this date" and sum those?
-    // Too complex for MVP.
-    // SIMPLEST MVP: Just increment a counter every time they save *new* words? No.
-    // Let's just estimate: We will store `user:{userId}:wordcount:{date}` with the current count.
-    // And `user:{userId}:stats` can hold the sum.
-    // On every save:
-    //   old_count = get `user:{userId}:wordcount:{date}`
-    //   diff = new_count - old_count
-    //   incrby `user:{userId}:stats:totalWords` diff
-    //   set `user:{userId}:wordcount:{date}` new_count
 
     const dailyWordCountKey = `user:${userId}:wordcount:${date}`;
     const oldDailyCount = await redis.get(dailyWordCountKey) || 0;
@@ -80,55 +110,27 @@ export async function POST(request) {
     }
 
     // 4. Calculate Streak
-    // Fetch all activity dates
     const activityDates = await redis.smembers(`user:${userId}:activity`);
-    const sortedDates = activityDates.sort(); // YYYY-MM-DD sorts correctly as string
-
-    let streak = 0;
-    let currentStreak = 0;
-    // Simple streak calc: iterate backwards from today
-    // Actually, we need to parse dates to check adjacency.
-
-    // Set for O(1) lookup
     const dateSet = new Set(activityDates);
-    const today = new Date();
-    const yesterday = new Date();
-    yesterday.setDate(today.getDate() - 1);
 
-    const todayStr = today.toISOString().split('T')[0];
-    const yesterdayStr = yesterday.toISOString().split('T')[0];
-
-    // If they wrote today, start streak at 1. If not, but wrote yesterday, start at 0 (will be 1 after check).
-    // Actually, logic:
-    // Check today. If yes, streak = 1. Check yesterday. If yes, streak++. etc.
-    // If today is missing, check yesterday. If yes, streak = 1...
-
+    let currentStreak = 0;
     let cursor = new Date();
-    // Start checking from today
-    let checkStr = cursor.toISOString().split('T')[0];
 
-    // If user hasn't written today yet (or just saved now), we start from today.
-    // If they haven't written today, streak might be active from yesterday.
-
-    // We just saved, so today IS active.
-    currentStreak = 0;
     while (true) {
         const dStr = cursor.toISOString().split('T')[0];
         if (dateSet.has(dStr)) {
             currentStreak++;
             cursor.setDate(cursor.getDate() - 1);
         } else {
-            // If we miss a day, streak breaks.
             break;
         }
     }
 
-    // Save streak
     await redis.set(`user:${userId}:stats:streak`, currentStreak);
 
     // 5. Check Badges
     const totalWords = await redis.get(`user:${userId}:stats:totalWords`) || 0;
-    const completions = await redis.scard(`user:${userId}:activity`); // Approximation: days active = completions
+    const completions = await redis.scard(`user:${userId}:activity`);
 
     const statsForBadges = {
         completions: completions,
