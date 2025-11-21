@@ -6,6 +6,10 @@ import WritingArea from '@/components/WritingArea';
 import HistoryModal from '@/components/HistoryModal';
 import ThemeToggle from '@/components/ThemeToggle';
 
+// Force dynamic rendering to ensure the page is served by the server (lambda)
+// rather than potentially stale or missing static files on the edge.
+export const dynamic = 'force-dynamic';
+
 export default function Home() {
     const [prompt, setPrompt] = useState(null);
     const [loading, setLoading] = useState(true);
