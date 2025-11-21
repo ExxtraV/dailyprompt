@@ -8,6 +8,7 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@tailwindcss/postcss": "^4.1.17",
     "@upstash/redis": "^1.31.5",
     "@vercel/kv": "^1.0.1",
     "autoprefixer": "^10.4.22",
