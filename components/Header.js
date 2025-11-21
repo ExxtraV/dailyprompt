@@ -1,12 +1,6 @@
-import AuthButton from "./AuthButton";
-
 export default function Header({ streak }) {
     return (
-        <header className="text-center mb-8 relative">
-            <div className="absolute top-0 left-0">
-                 <AuthButton />
-            </div>
-
+        <header className="text-center mb-8">
             <h1 className="text-5xl font-black text-gray-900 dark:text-gray-100 mt-8 sm:mt-0">Run & Write</h1>
             <p className="text-lg text-gray-600 mt-2 dark:text-gray-400">Your Daily Dose of Creative Inspiration</p>
             <div className="mt-4">
