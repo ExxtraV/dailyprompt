@@ -24,14 +24,30 @@ export async function POST(request) {
     await redis.set(`user:${userId}:banned`, 'true');
 
     // 2. Remove content
-    const activityDates = await redis.smembers(`user:${userId}:activity`);
+    // We need to find all posts by this user in the feed, not just those in 'activity' (which only tracks >150 words).
+    // ZSCAN is the way to find members in a ZSET.
+    // Pattern: post:{userId}:*
 
-    for (const date of activityDates) {
-        const postKey = `post:${userId}:${date}`;
-        // Delete content
-        await redis.del(postKey);
-        // Remove from feed
-        await redis.zrem('community:feed:ids', postKey);
+    let cursor = 0;
+    const pattern = `post:${userId}:*`;
+    const postsToDelete = [];
+
+    do {
+        // ZSCAN key cursor MATCH pattern
+        const [newCursor, members] = await redis.zscan('community:feed:ids', cursor, { match: pattern });
+        cursor = newCursor;
+
+        // members is an array of [member, score, member, score...]
+        for (let i = 0; i < members.length; i += 2) {
+            postsToDelete.push(members[i]);
+        }
+    } while (cursor !== 0 && cursor !== '0'); // Upstash might return string '0'
+
+    if (postsToDelete.length > 0) {
+        // 1. Remove from ZSET
+        await redis.zrem('community:feed:ids', ...postsToDelete);
+        // 2. Delete the actual post keys
+        await redis.del(...postsToDelete);
     }
 
     return NextResponse.json({ success: true });

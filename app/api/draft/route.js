@@ -41,6 +41,13 @@ export async function POST(request) {
     }
 
     const userId = session.user.id;
+
+    // Check ban status immediately
+    const isBanned = await redis.get(`user:${userId}:banned`);
+    if (isBanned) {
+        return NextResponse.json({ message: 'User is banned' }, { status: 403 });
+    }
+
     const draftKey = `user:${userId}:draft:${date}`;
     const postKey = `post:${userId}:${date}`; // Stores the feed item content
     const feedId = `${userId}:${date}`;
@@ -94,12 +101,6 @@ export async function POST(request) {
     }
 
     // 3. Calculate Stats
-    // Check ban status
-    const isBanned = await redis.get(`user:${userId}:banned`);
-    if (isBanned) {
-        return NextResponse.json({ message: 'User is banned' }, { status: 403 });
-    }
-
     const wordCount = text.trim() === '' ? 0 : text.trim().split(/\s+/).length;
 
     if (wordCount >= 150) {
