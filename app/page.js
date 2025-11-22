@@ -5,6 +5,7 @@ import PromptDisplay from '@/components/PromptDisplay';
 import WritingArea from '@/components/WritingArea';
 import HistoryModal from '@/components/HistoryModal';
 import ThemeToggle from '@/components/ThemeToggle';
+import AuthButton from '@/components/AuthButton';
 
 // Force dynamic rendering to ensure the page is served by the server (lambda)
 // rather than potentially stale or missing static files on the edge.
@@ -121,6 +122,12 @@ export default function Home() {
 
     return (
         <div className="min-h-screen flex flex-col items-center justify-center p-4 relative">
+            {/* Top Left: Auth Button */}
+            <div className="absolute top-4 left-4 z-10">
+                <AuthButton />
+            </div>
+
+            {/* Top Right: Theme Toggle */}
             <ThemeToggle />
 
             <Header streak={streak} />
