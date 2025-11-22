@@ -1,6 +1,7 @@
 import "./globals.css";
 import { Inter } from 'next/font/google';
 import { Providers } from "@/components/Providers";
+import BannedNotice from "@/components/BannedNotice";
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -14,6 +15,7 @@ export default function RootLayout({ children }) {
     <html lang="en" suppressHydrationWarning>
       <body className={`${inter.className} bg-gray-50 text-gray-800 dark:bg-gray-900 dark:text-gray-300 min-h-screen transition-colors duration-300`}>
         <Providers>
+          <BannedNotice />
           {children}
         </Providers>
       </body>

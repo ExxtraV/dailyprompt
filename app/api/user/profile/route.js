@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
-import { redis } from '@/lib/redis';
+import { updateUserDisplayName } from '@/lib/user';
 
 export async function PATCH(request) {
     const session = await getServerSession(authOptions);
@@ -17,35 +17,10 @@ export async function PATCH(request) {
     }
 
     const userId = session.user.id;
-    const userKey = `user:${userId}`;
+    const success = await updateUserDisplayName(userId, name);
 
-    // The @auth/upstash-redis-adapter stores the user as a generic object (JSON?) or hash?
-    // It usually stores as a Hash if using 'hset' or JSON if 'set'.
-    // Let's check how we initialized. We used `UpstashRedisAdapter(redis)`.
-    // By default, the adapter determines storage.
-    // However, updating via `redis.set` might overwrite other fields if it's a blob.
-    // Safer: Get, Update, Set.
-
-    // NOTE: The adapter implementation details matter.
-    // If I change it manually, I might break it if I don't match the schema.
-    // Usually it's: { name, email, image, emailVerified }
-
-    // Let's try to fetch it first.
-    const userData = await redis.get(userKey);
-
-    if (userData && typeof userData === 'object') {
-        // It's likely a JSON object.
-        const updatedUser = { ...userData, name: name.trim() };
-        await redis.set(userKey, updatedUser);
-    } else {
-        // If it's mostly string or null, this approach is risky.
-        // But since we are using the standard adapter, it's likely JSON.
-        // Let's assume JSON for now.
-        // If authentication breaks, I will revert.
-        // A safer bet is to just update our own "metadata" if we don't want to touch auth.
-        // BUT the user wants to change their "Display Name".
-        // Let's risk the update.
-        return NextResponse.json({ message: 'User update not fully supported without verifying storage format' }, { status: 501 });
+    if (!success) {
+        return NextResponse.json({ message: 'Failed to update user' }, { status: 500 });
     }
 
     return NextResponse.json({ success: true, name: name.trim() });
