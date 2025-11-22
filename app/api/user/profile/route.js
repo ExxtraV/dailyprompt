@@ -37,6 +37,24 @@ export async function PATCH(request) {
         // It's likely a JSON object.
         const updatedUser = { ...userData, name: name.trim() };
         await redis.set(userKey, updatedUser);
+
+        // Propagate name change to all past posts
+        // 1. Get all activity dates
+        const activityDates = await redis.smembers(`user:${userId}:activity`);
+
+        // 2. Iterate and update
+        // Use Promise.all for concurrency, but limit if array is huge (unlikely for now)
+        await Promise.all(activityDates.map(async (date) => {
+            const postKey = `post:${userId}:${date}`;
+            const postData = await redis.get(postKey);
+
+            if (postData && typeof postData === 'object') {
+                const updatedPost = { ...postData, userName: name.trim() };
+                // We only need to update the object, the ZSET contains the key reference
+                await redis.set(postKey, updatedPost);
+            }
+        }));
+
     } else {
         // If it's mostly string or null, this approach is risky.
         // But since we are using the standard adapter, it's likely JSON.
