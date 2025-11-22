@@ -60,12 +60,16 @@ export async function GET(request) {
         profileKeys.forEach((key, index) => {
             const profile = profiles[index];
             if (profile && typeof profile === 'object') {
+                const status = bannedStatuses[index];
+                // Robust check for string 'true' or boolean true
+                const isBanned = String(status) === 'true';
+
                 users.push({
                     id: key.split(':')[1],
                     name: profile.name,
                     email: profile.email,
                     image: profile.image,
-                    isBanned: bannedStatuses[index] === 'true'
+                    isBanned: isBanned
                 });
             }
         });
