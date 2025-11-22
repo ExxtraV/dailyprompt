@@ -253,7 +253,12 @@ export default function WritingArea({
                     ></textarea>
 
                     <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                        <p className="text-sm font-medium text-gray-700 dark:text-gray-200">Word count: <span className="font-semibold">{currentWordCount}</span></p>
+                        <div className="flex flex-col sm:flex-row gap-4">
+                            <p className="text-sm font-medium text-gray-700 dark:text-gray-200">Word count: <span className="font-semibold">{currentWordCount}</span></p>
+                            <p className={`text-sm font-medium ${currentWordCount >= 150 ? 'text-green-600 dark:text-green-400' : 'text-orange-600 dark:text-orange-400'}`}>
+                                Streak Progress: {Math.min(currentWordCount, 150)} / 150 words
+                            </p>
+                        </div>
                         <p className={`text-sm ${isGoalMet ? 'text-green-600 dark:text-green-400' : 'text-gray-600 dark:text-gray-300'}`}>
                             {getGoalStatusText()}
                         </p>
