@@ -94,9 +94,15 @@ export async function POST(request) {
     }
 
     // 3. Calculate Stats
-    const wordCount = text.trim().split(/\s+/).length || 0;
+    // Check ban status
+    const isBanned = await redis.get(`user:${userId}:banned`);
+    if (isBanned) {
+        return NextResponse.json({ message: 'User is banned' }, { status: 403 });
+    }
 
-    if (wordCount > 5) {
+    const wordCount = text.trim() === '' ? 0 : text.trim().split(/\s+/).length;
+
+    if (wordCount >= 150) {
         await redis.sadd(`user:${userId}:activity`, date);
     }
 
@@ -111,18 +117,38 @@ export async function POST(request) {
 
     // 4. Calculate Streak
     const activityDates = await redis.smembers(`user:${userId}:activity`);
-    const dateSet = new Set(activityDates);
+    const sortedDates = activityDates.sort().reverse();
 
     let currentStreak = 0;
-    let cursor = new Date();
 
-    while (true) {
-        const dStr = cursor.toISOString().split('T')[0];
-        if (dateSet.has(dStr)) {
-            currentStreak++;
-            cursor.setDate(cursor.getDate() - 1);
-        } else {
-            break;
+    if (sortedDates.length > 0) {
+        const latestDateStr = sortedDates[0];
+        const latestDate = new Date(latestDateStr);
+        const today = new Date();
+
+        // Reset times to midnight UTC for accurate day diff
+        latestDate.setUTCHours(0,0,0,0);
+        const todayMidnight = new Date(today);
+        todayMidnight.setUTCHours(0,0,0,0);
+
+        const msPerDay = 24 * 60 * 60 * 1000;
+        const diffTime = todayMidnight - latestDate;
+        const diffDays = Math.floor(diffTime / msPerDay);
+
+        // Streak is alive if latest activity is Today (0), Yesterday (1), or Future (<0)
+        if (diffDays <= 1) {
+            const dateSet = new Set(activityDates);
+            let cursor = new Date(latestDateStr);
+
+            while (true) {
+                const dStr = cursor.toISOString().split('T')[0];
+                if (dateSet.has(dStr)) {
+                    currentStreak++;
+                    cursor.setUTCDate(cursor.getUTCDate() - 1);
+                } else {
+                    break;
+                }
+            }
         }
     }
 
