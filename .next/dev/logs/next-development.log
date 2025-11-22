@@ -29,3 +29,6 @@ Require stack:
 [00:00:24.220] Server  LOG      ○ Compiling /admin ...
 [00:00:27.785] Server  WARN    [next-auth][warn][NEXTAUTH_URL] "\nhttps://next-auth.js.org/warnings#nextauth_url"
 [00:00:27.785] Server  WARN    [next-auth][warn][NO_SECRET] "\nhttps://next-auth.js.org/warnings#no_secret"
+[00:00:20.112] Server  LOG      ○ Compiling /admin ...
+[00:00:24.939] Server  WARN    [next-auth][warn][NEXTAUTH_URL] "\nhttps://next-auth.js.org/warnings#nextauth_url"
+[00:00:24.940] Server  WARN    [next-auth][warn][NO_SECRET] "\nhttps://next-auth.js.org/warnings#no_secret"
