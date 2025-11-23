@@ -6,26 +6,48 @@ const redis = new Redis({
 });
 
 async function migrate() {
+    if (!process.env.MANUAL_UPSTASH_URL || !process.env.MANUAL_UPSTASH_TOKEN) {
+        console.error("Error: MANUAL_UPSTASH_URL and MANUAL_UPSTASH_TOKEN environment variables are required.");
+        console.error("Please run with: export MANUAL_UPSTASH_URL=... MANUAL_UPSTASH_TOKEN=... && node scripts/run_migration.mjs");
+        process.exit(1);
+    }
+
     console.log("Starting migration...");
     const log = [];
+    let count = 0;
 
     try {
         // 1. Migrate Prompts
+        console.log("Scanning Prompts...");
         const promptKeys = await redis.keys('prompt:*');
         for (const key of promptKeys) {
             if (key.startsWith('prompts:')) continue;
             const date = key.split(':')[1];
             if (!date) continue;
             const newKey = `prompts:${date}`;
+
             const val = await redis.get(key);
             if (val) {
-                await redis.set(newKey, val);
-                await redis.del(key);
-                log.push(`Migrated ${key} -> ${newKey}`);
+                // Check if new key already exists to avoid overwriting if migration ran partially
+                const exists = await redis.exists(newKey);
+                if (!exists) {
+                    await redis.set(newKey, val);
+                    await redis.del(key);
+                    log.push(`Migrated ${key} -> ${newKey}`);
+                    count++;
+                } else {
+                     // Already migrated, just delete old? Safer to keep both or delete old?
+                     // Let's delete old to clean up as requested.
+                     // If values match?
+                     // Assume safe to delete old if new exists.
+                     await redis.del(key);
+                     log.push(`Cleaned up ${key} (New key exists)`);
+                }
             }
         }
 
         // 2. Migrate Posts & Build User Post Index
+        console.log("Scanning Posts...");
         const postKeys = await redis.keys('post:*:*');
         for (const key of postKeys) {
             const parts = key.split(':'); // post:userId:date
@@ -51,10 +73,12 @@ async function migrate() {
 
                 await redis.del(key);
                 log.push(`Migrated ${key} -> ${newKey}`);
+                count++;
             }
         }
 
         // 3. Migrate Drafts
+        console.log("Scanning Drafts...");
         const draftKeys = await redis.keys('user:*:draft:*');
         for (const key of draftKeys) {
             const parts = key.split(':'); // user:userId:draft:date
@@ -69,10 +93,12 @@ async function migrate() {
                 await redis.set(newKey, val);
                 await redis.del(key);
                 log.push(`Migrated ${key} -> ${newKey}`);
+                count++;
             }
         }
 
         // 4. Migrate Stats (Total Words)
+        console.log("Scanning Word Stats...");
         const wordKeys = await redis.keys('user:*:stats:totalWords');
         for (const key of wordKeys) {
             const parts = key.split(':');
@@ -82,10 +108,12 @@ async function migrate() {
                 await redis.hset(`users:${userId}:stats`, { totalWords: val });
                 await redis.del(key);
                 log.push(`Migrated ${key} -> users:${userId}:stats (totalWords)`);
+                count++;
             }
         }
 
         // 5. Migrate Stats (Streak)
+        console.log("Scanning Streak Stats...");
         const streakKeys = await redis.keys('user:*:stats:streak');
         for (const key of streakKeys) {
             const parts = key.split(':');
@@ -95,10 +123,12 @@ async function migrate() {
                 await redis.hset(`users:${userId}:stats`, { streak: val });
                 await redis.del(key);
                 log.push(`Migrated ${key} -> users:${userId}:stats (streak)`);
+                count++;
             }
         }
 
         // 6. Migrate Activity Sets
+        console.log("Scanning Activity Sets...");
         const activityKeys = await redis.keys('user:*:activity');
         for (const key of activityKeys) {
             const parts = key.split(':');
@@ -114,11 +144,13 @@ async function migrate() {
                     }
                     await redis.del(key);
                     log.push(`Migrated ${key} -> ${newKey}`);
+                    count++;
                  }
             }
         }
 
          // 7. Migrate Badges Sets
+        console.log("Scanning Badges...");
         const badgesKeys = await redis.keys('user:*:badges');
         for (const key of badgesKeys) {
             const parts = key.split(':');
@@ -133,11 +165,13 @@ async function migrate() {
                     }
                     await redis.del(key);
                     log.push(`Migrated ${key} -> ${newKey}`);
+                    count++;
                  }
             }
         }
 
-        // 8. Migrate Daily Word Counts (Fix for double-counting bug)
+        // 8. Migrate Daily Word Counts
+        console.log("Scanning Daily Word Counts...");
         const dailyCountKeys = await redis.keys('user:*:wordcount:*');
         for (const key of dailyCountKeys) {
              // user:userId:wordcount:date
@@ -152,11 +186,12 @@ async function migrate() {
                  await redis.set(newKey, val);
                  await redis.del(key);
                  log.push(`Migrated ${key} -> ${newKey}`);
+                 count++;
              }
         }
 
         console.log("Migration Log:", log);
-        console.log("Migration completed successfully.");
+        console.log(`Migration completed. Moved ${count} items.`);
 
     } catch (error) {
         console.error("Migration failed:", error);
