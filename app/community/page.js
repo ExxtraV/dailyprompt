@@ -44,19 +44,22 @@ export default function CommunityPage() {
                         <div key={item.id} className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 border border-gray-200 dark:border-gray-700 transition hover:shadow-xl">
                             <div className="flex items-center justify-between mb-4 border-b border-gray-100 dark:border-gray-700 pb-4">
                                 <div className="flex items-center gap-3">
-                                    {item.userImage ? (
-                                        <img src={item.userImage} alt={item.userName} className="w-10 h-10 rounded-full border border-gray-200 dark:border-gray-600" />
-                                    ) : (
-                                        <div className="w-10 h-10 rounded-full bg-orange-100 dark:bg-gray-700 flex items-center justify-center">
-                                            <User size={20} className="text-orange-500 dark:text-gray-400" />
+                                    {/* User Avatar & Name Link to Profile */}
+                                    <Link href={`/profile/${item.userId}`} className="flex items-center gap-3 group">
+                                        {item.userImage ? (
+                                            <img src={item.userImage} alt={item.userName} className="w-10 h-10 rounded-full border border-gray-200 dark:border-gray-600 group-hover:ring-2 ring-orange-500 transition" />
+                                        ) : (
+                                            <div className="w-10 h-10 rounded-full bg-orange-100 dark:bg-gray-700 flex items-center justify-center group-hover:ring-2 ring-orange-500 transition">
+                                                <User size={20} className="text-orange-500 dark:text-gray-400" />
+                                            </div>
+                                        )}
+                                        <div>
+                                            <p className="font-bold text-gray-900 dark:text-white group-hover:text-orange-500 transition">{item.userName}</p>
+                                            <p className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1">
+                                                <Calendar size={12} /> {item.date}
+                                            </p>
                                         </div>
-                                    )}
-                                    <div>
-                                        <p className="font-bold text-gray-900 dark:text-white">{item.userName}</p>
-                                        <p className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1">
-                                            <Calendar size={12} /> {item.date}
-                                        </p>
-                                    </div>
+                                    </Link>
                                 </div>
                                 <Link
                                     href={`/prompt/${item.date}`}
