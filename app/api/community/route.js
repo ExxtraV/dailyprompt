@@ -13,10 +13,10 @@ export async function GET() {
         }
 
         // 2. Fetch content for these keys
+        // Keys are now `posts:userId:date`
         const posts = await redis.mget(...postKeys);
 
         // 3. Filter and format
-        // Upstash MGET returns an array of values (objects if JSON, or strings)
         const feed = posts.filter(Boolean);
 
         return NextResponse.json(feed);
