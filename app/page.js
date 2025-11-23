@@ -30,8 +30,7 @@ export default function Home() {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        action: 'get_today',
-                        prompt: "A daily writing prompt for a creative writer. The prompt should be evocative, open-ended, and suitable for any genre. It should inspire a scene, a character, or a story. Be creative and avoid clichés. It should only be a 2-3 sentences, do not return formatting."
+                        action: 'get_today'
                     })
                 });
                 if (!res.ok) throw new Error('Failed to fetch prompt');
