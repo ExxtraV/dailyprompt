@@ -119,3 +119,18 @@ Can't reach database server at `localhost`:`5432`
 Please make sure your database server is running at `localhost`:`5432`.
 [00:11:59.913] Server  ERROR   Missing GEMINI_API_KEY
 [00:12:00.689] Browser WARN    [tiptap warn]: Duplicate extension names found: ['underline']. This can lead to issues.
+[00:15:31.642] Server  WARN    [next-auth][warn][NEXTAUTH_URL] "\nhttps://next-auth.js.org/warnings#nextauth_url"
+[00:15:33.139] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[00:15:33.731] Server  ERROR   Database Error (Fetch Prompt): PrismaClientInitializationError:
+Invalid `__TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$prisma$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["prisma"].prompt.findUnique()` invocation in
+/app/.next/dev/server/chunks/[root-of-the-server]__6fb71485._.js:100:171
+
+   97 const todayUTC = new Date().toISOString().split('T')[0];
+   98 // 1. Try to fetch from DB
+   99 try {
+→ 100     let storedPrompt = await __TURBOPACK__imported__module__$5b$project$5d2f$lib$2f$prisma$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["prisma"].prompt.findUnique(
+Can't reach database server at `localhost`:`5432`
+
+Please make sure your database server is running at `localhost`:`5432`.
+[00:15:33.732] Server  ERROR   Missing GEMINI_API_KEY
+[00:15:34.471] Browser WARN    [tiptap warn]: Duplicate extension names found: ['underline']. This can lead to issues.
