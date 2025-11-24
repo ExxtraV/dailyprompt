@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
-import { authOptions } from '@/app/api/auth/[...nextauth]/route';
-import { redis } from '@/lib/redis';
+import { authOptions } from '@/lib/auth';
+import { prisma } from '@/lib/prisma';
 import { checkBadges } from '@/lib/gamification';
 
 export async function GET(request) {
@@ -17,14 +17,17 @@ export async function GET(request) {
         return NextResponse.json({ message: 'Date required' }, { status: 400 });
     }
 
-    const key = `drafts:${session.user.id}:${date}`;
-    const draft = await redis.get(key);
+    const post = await prisma.post.findFirst({
+        where: {
+            userId: session.user.id,
+            date: date
+        }
+    });
 
-    // Check published state via Post key
-    const postKey = `posts:${session.user.id}:${date}`;
-    const postExists = await redis.exists(postKey);
-
-    return NextResponse.json({ text: draft || '', published: postExists === 1 });
+    return NextResponse.json({
+        text: post?.content || '',
+        published: post?.published || false
+    });
 }
 
 export async function POST(request) {
@@ -41,134 +44,115 @@ export async function POST(request) {
     }
 
     const userId = session.user.id;
-
-    // Check ban status immediately (using user: for Auth/Status related things, keeping it simple or assuming migrated?)
-    // The plan didn't mention moving banned status. It's admin stuff. Let's check if we should move it.
-    // "Clean up storage method... grouped together".
-    // Ideally `users:{id}:banned`.
-    // For now, I'll leave it as `user:{id}:banned` or check both?
-    // I'll leave it as `user:{id}:banned` since I didn't migrate it.
-
-    const isBanned = await redis.get(`user:${userId}:banned`);
-    if (isBanned) {
-        return NextResponse.json({ message: 'User is banned' }, { status: 403 });
-    }
-
-    const draftKey = `drafts:${userId}:${date}`;
-    const postKey = `posts:${userId}:${date}`;
-    const feedId = `${userId}:${date}`;
-
-    // 1. Save draft
-    await redis.set(draftKey, text);
-
-    // 2. Handle Publishing / Unpublishing / Updating
-    if (published === true) {
-        const feedItem = {
-            id: feedId,
-            userId: userId,
-            userName: session.user.name,
-            userImage: session.user.image,
-            date: date,
-            text: text,
-            publishedAt: Date.now()
-        };
-
-        await redis.set(postKey, feedItem);
-        await redis.zadd('community:feed:ids', { score: Date.now(), member: postKey });
-
-        // Add to User's Post Index
-        const timestamp = new Date(date).getTime();
-        await redis.zadd(`users:${userId}:posts`, { score: timestamp, member: postKey });
-
-    } else if (published === false) {
-        // Unpublish
-        await redis.del(postKey);
-        await redis.zrem('community:feed:ids', postKey);
-        await redis.zrem(`users:${userId}:posts`, postKey);
-    }
-    else {
-        // Draft update (auto-update published content if exists)
-        const isPublished = await redis.exists(postKey);
-        if (isPublished) {
-             const feedItem = {
-                id: feedId,
-                userId: userId,
-                userName: session.user.name,
-                userImage: session.user.image,
-                date: date,
-                text: text,
-                publishedAt: Date.now()
-            };
-            await redis.set(postKey, feedItem);
-            // Do not bump score in feed?
-        }
-    }
-
-    // 3. Calculate Stats
     const wordCount = text.trim() === '' ? 0 : text.trim().split(/\s+/).length;
 
-    if (wordCount >= 150) {
-        await redis.sadd(`users:${userId}:activity`, date);
-    }
+    // Create or Update Post
+    const post = await prisma.post.upsert({
+        where: {
+            // We need a unique constraint to upsert.
+            // In Prisma schema we didn't add @@unique([userId, date]),
+            // but we can find the existing one first or add the constraint.
+            // Let's use findFirst then update/create manually since schema changes are "expensive" in this flow
+            // Actually, we can just use a transaction or findFirst.
+            // But wait, `slug` is unique. We construct slug as `${userId}-${date}` usually?
+            // Let's construct a deterministic slug.
+             slug: `${userId.replace(/[^a-zA-Z0-9]/g, '-')}-${date}`
+        },
+        update: {
+            content: text,
+            wordCount: wordCount,
+            published: published !== undefined ? published : undefined, // Only update if provided
+        },
+        create: {
+            userId: userId,
+            date: date,
+            slug: `${userId.replace(/[^a-zA-Z0-9]/g, '-')}-${date}`,
+            content: text,
+            wordCount: wordCount,
+            published: published || false
+        }
+    });
 
-    // Daily Word Count - keep tracking per day?
-    // `user:{id}:wordcount:{date}` -> `users:{id}:wordcount:{date}`?
-    // Yes, stick to users: namespace.
-    const dailyWordCountKey = `users:${userId}:wordcount:${date}`;
-    const oldDailyCount = await redis.get(dailyWordCountKey) || 0;
-    const diff = wordCount - parseInt(oldDailyCount, 10);
+    // --- Stats Calculation ---
 
-    if (diff !== 0) {
-        // Update Hash
-        await redis.hincrby(`users:${userId}:stats`, 'totalWords', diff);
-        await redis.set(dailyWordCountKey, wordCount);
-    }
+    // 1. Total Words
+    // We can recalculate total words from scratch to be accurate,
+    // or keep an incremental counter on User.
+    // Aggregation is safer and cleaner for "better database".
+    const totalWordsResult = await prisma.post.aggregate({
+        where: { userId: userId },
+        _sum: { wordCount: true }
+    });
+    const totalWords = totalWordsResult._sum.wordCount || 0;
 
-    // 4. Calculate Streak
-    const activityDates = await redis.smembers(`users:${userId}:activity`);
-    const sortedDates = activityDates.sort().reverse();
+    // 2. Streak
+    // Fetch all dates where wordCount >= 150
+    const activePosts = await prisma.post.findMany({
+        where: {
+            userId: userId,
+            wordCount: { gte: 150 }
+        },
+        select: { date: true },
+        orderBy: { date: 'desc' }
+    });
 
+    const sortedDates = activePosts.map(p => p.date); // Dates are strings YYYY-MM-DD
     let currentStreak = 0;
 
     if (sortedDates.length > 0) {
-        const latestDateStr = sortedDates[0];
-        const dateSet = new Set(activityDates);
-        let cursor = new Date(latestDateStr);
-        let tempStreak = 0;
+        const dateSet = new Set(sortedDates);
+        const todayStr = new Date().toISOString().split('T')[0];
 
-        while (true) {
-            const dStr = cursor.toISOString().split('T')[0];
-            if (dateSet.has(dStr)) {
-                tempStreak++;
-                cursor.setUTCDate(cursor.getUTCDate() - 1);
-            } else {
-                break;
-            }
+        // Start checking from today or yesterday
+        let cursor = new Date();
+        // If they haven't written today, check if they wrote yesterday to keep streak alive
+        if (!dateSet.has(todayStr)) {
+             // If latest post was yesterday, streak is alive (but 0 for today until they write? No, streak is how many CONSECUTIVE days ending yesterday or today).
+             // Standard logic: if they missed yesterday, streak is 0.
         }
 
+        // Logic from previous code:
+        // Find the latest active date.
+        const latestDateStr = sortedDates[0];
+        const latestDate = new Date(latestDateStr);
         const today = new Date();
         today.setUTCHours(0,0,0,0);
-
-        const latestDate = new Date(latestDateStr);
         latestDate.setUTCHours(0,0,0,0);
 
         const diffTime = today - latestDate;
         const diffDays = Math.floor(diffTime / (24 * 60 * 60 * 1000));
 
         if (diffDays <= 1) {
+            // Streak is alive. Calculate it.
+            let tempStreak = 0;
+            let checkDate = new Date(latestDateStr); // Start from the last active day
+            while (true) {
+                const dStr = checkDate.toISOString().split('T')[0];
+                if (dateSet.has(dStr)) {
+                    tempStreak++;
+                    checkDate.setUTCDate(checkDate.getUTCDate() - 1);
+                } else {
+                    break;
+                }
+            }
             currentStreak = tempStreak;
         } else {
-             currentStreak = 0;
+            currentStreak = 0;
         }
     }
 
-    await redis.hset(`users:${userId}:stats`, { streak: currentStreak });
+    // Update User Stats
+    await prisma.user.update({
+        where: { id: userId },
+        data: {
+            totalWords: totalWords,
+            streak: currentStreak,
+            lastActive: new Date()
+        }
+    });
 
-    // 5. Check Badges
-    // Get stats from Hash
-    const statsHash = await redis.hgetall(`users:${userId}:stats`) || {};
-    const totalWords = parseInt(statsHash.totalWords || 0, 10);
-    const completions = await redis.scard(`users:${userId}:activity`);
+    // --- Badges ---
+    const completions = activePosts.length;
 
     const statsForBadges = {
         completions: completions,
@@ -176,11 +160,21 @@ export async function POST(request) {
         totalWords: totalWords
     };
 
-    const currentBadges = await redis.smembers(`users:${userId}:badges`);
-    const newBadges = checkBadges(statsForBadges, currentBadges);
+    const existingBadges = await prisma.badge.findMany({
+        where: { userId: userId },
+        select: { name: true }
+    });
+    const currentBadgeNames = existingBadges.map(b => b.name);
 
-    if (newBadges.length > 0) {
-        await redis.sadd(`users:${userId}:badges`, ...newBadges);
+    const newBadgeNames = checkBadges(statsForBadges, currentBadgeNames);
+
+    if (newBadgeNames.length > 0) {
+        await prisma.badge.createMany({
+            data: newBadgeNames.map(name => ({
+                userId: userId,
+                name: name
+            }))
+        });
     }
 
     return NextResponse.json({
@@ -188,7 +182,7 @@ export async function POST(request) {
         stats: {
             words: wordCount,
             streak: currentStreak,
-            newBadges: newBadges
+            newBadges: newBadgeNames
         }
     });
 }

@@ -1,34 +1,35 @@
 import { NextResponse } from 'next/server';
-import { redis } from '@/lib/redis';
+import { prisma } from '@/lib/prisma';
 
 export async function POST(request) {
     try {
         const body = await request.json();
-        const { action, prompt } = body;
+        const { action } = body;
 
         if (action === 'get_history') {
-            const keys = await redis.keys('prompts:*');
-            if (keys.length === 0) {
-                return NextResponse.json([]);
-            }
-            const prompts = await redis.mget(...keys);
+            const prompts = await prisma.prompt.findMany({
+                orderBy: { date: 'desc' }
+            });
 
-            const history = keys.map((key, index) => ({
-                date: key.replace('prompts:', ''),
-                prompt: prompts[index]
-            })).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+            const history = prompts.map(p => ({
+                date: p.date,
+                prompt: p.text,
+                theme: p.theme
+            }));
 
             return NextResponse.json(history);
         }
 
         if (action === 'get_today') {
             const todayUTC = new Date().toISOString().split('T')[0];
-            const key = `prompts:${todayUTC}`;
 
-            let storedPrompt = await redis.get(key);
+            // Check if a prompt already exists for today
+            let storedPrompt = await prisma.prompt.findUnique({
+                where: { date: todayUTC }
+            });
 
             if (storedPrompt) {
-                return NextResponse.json({ text: storedPrompt });
+                return NextResponse.json({ text: storedPrompt.text });
             }
 
             const apiKey = process.env.GEMINI_API_KEY;
@@ -83,7 +84,13 @@ export async function POST(request) {
             const newPromptText = result.candidates?.[0]?.content?.parts?.[0]?.text;
 
             if (newPromptText) {
-                await redis.set(key, newPromptText);
+                await prisma.prompt.create({
+                    data: {
+                        date: todayUTC,
+                        text: newPromptText,
+                        theme: randomTheme
+                    }
+                });
                 return NextResponse.json({ text: newPromptText });
             } else {
                 return NextResponse.json({ message: 'The oracle spoke, but its words were empty.' }, { status: 500 });

@@ -1,4 +1,4 @@
-import { redis } from '@/lib/redis';
+import { prisma } from '@/lib/prisma';
 
 export const dynamic = 'force-dynamic';
 
@@ -16,24 +16,22 @@ export default async function sitemap() {
   ];
 
   try {
-    // Attempt to fetch if credentials exist, otherwise return static routes (e.g. during build)
-    if (process.env.MANUAL_UPSTASH_URL && !process.env.MANUAL_UPSTASH_URL.includes('mock-url')) {
-        const keys = await redis.keys('prompt:*');
-        const promptRoutes = keys.map((key) => {
-          const date = key.replace('prompt:', '');
-          return {
-            url: `${baseUrl}/prompt/${date}`,
-            lastModified: new Date(),
-            changeFrequency: 'never',
-            priority: 0.8,
-          };
-        });
-        return [...routes, ...promptRoutes];
-    }
-    return routes;
+     const prompts = await prisma.prompt.findMany({
+         select: { date: true }
+     });
+
+    const promptRoutes = prompts.map((p) => {
+        return {
+        url: `${baseUrl}/prompt/${p.date}`,
+        lastModified: new Date(),
+        changeFrequency: 'never',
+        priority: 0.8,
+        };
+    });
+    return [...routes, ...promptRoutes];
 
   } catch (error) {
-    console.warn('Sitemap generation failed to connect to Redis:', error.message);
+    console.warn('Sitemap generation failed:', error.message);
     return routes;
   }
 }
