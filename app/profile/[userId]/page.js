@@ -160,8 +160,8 @@ export default function ProfilePage() {
                                         <Calendar size={14} />
                                         <span>{post.date}</span>
                                     </div>
-                                    {/* We link to the story page */}
-                                    <a href={`/community/${post.id}`} className="block group">
+                                    {/* We link to the story page using the same slug format as Community Feed */}
+                                    <a href={`/community/${(post.id || '').replace(':', '-')}`} className="block group">
                                         <div className="bg-gray-50 dark:bg-gray-900 p-4 rounded-lg group-hover:ring-2 ring-orange-500 transition">
                                              <p className="line-clamp-3 text-gray-700 dark:text-gray-300 leading-relaxed">
                                                 {post.text}
