@@ -41,8 +41,9 @@ export default function CommunityPage() {
 
                 <div className="space-y-6">
                     {feed.map((item) => (
-                        <div key={item.id} className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 border border-gray-200 dark:border-gray-700 transition hover:shadow-xl">
-                            <div className="flex items-center justify-between mb-4 border-b border-gray-100 dark:border-gray-700 pb-4">
+                        <div key={item.id} className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 border border-gray-200 dark:border-gray-700 transition hover:shadow-xl relative group-card">
+                            <Link href={`/community/${item.id}`} className="absolute inset-0 z-0" aria-label="Read full story"></Link>
+                            <div className="flex items-center justify-between mb-4 border-b border-gray-100 dark:border-gray-700 pb-4 relative z-10">
                                 <div className="flex items-center gap-3">
                                     {/* User Avatar & Name Link to Profile */}
                                     <Link href={`/profile/${item.userId}`} className="flex items-center gap-3 group">
@@ -69,18 +70,17 @@ export default function CommunityPage() {
                                 </Link>
                             </div>
 
-                            <div className="prose dark:prose-invert max-w-none relative">
+                            <div className="prose dark:prose-invert max-w-none relative z-0 pointer-events-none">
                                 <p className="text-gray-700 dark:text-gray-300 leading-relaxed line-clamp-3">
                                     {item.text.replace(/<[^>]*>/g, ' ')}
                                 </p>
-                                <div className="mt-4">
-                                    <Link
-                                        href={`/community/${item.id}`}
-                                        className="inline-flex items-center text-sm font-bold text-orange-600 hover:text-orange-700 dark:text-orange-500 dark:hover:text-orange-400"
-                                    >
-                                        Read full story &rarr;
-                                    </Link>
-                                </div>
+                            </div>
+                            <div className="mt-4 relative z-10">
+                                <span
+                                    className="inline-flex items-center text-sm font-bold text-orange-600 group-card-hover:text-orange-700 dark:text-orange-500 dark:group-card-hover:text-orange-400 pointer-events-none"
+                                >
+                                    Read full story &rarr;
+                                </span>
                             </div>
                         </div>
                     ))}

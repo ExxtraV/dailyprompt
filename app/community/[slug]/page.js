@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { ArrowLeft, User } from 'lucide-react';
 import { notFound } from 'next/navigation';
 import ThemeToggle from '@/components/ThemeToggle';
-import DOMPurify from 'isomorphic-dompurify';
+import sanitizeHtml from 'sanitize-html';
 
 export async function generateMetadata({ params }) {
     const { slug } = await params;
@@ -91,7 +91,13 @@ export default async function StoryPage({ params }) {
 
                         <div className="prose dark:prose-invert max-w-none text-gray-800 dark:text-gray-300 leading-relaxed text-lg">
                             {isHtml ? (
-                                <div dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(post.content) }} />
+                                <div dangerouslySetInnerHTML={{ __html: sanitizeHtml(post.content, {
+                                    allowedTags: sanitizeHtml.defaults.allowedTags.concat([ 'h1', 'h2', 'u' ]),
+                                    allowedAttributes: {
+                                        ...sanitizeHtml.defaults.allowedAttributes,
+                                        '*': ['class', 'style'] // Allow styling if needed, or Tiptap attributes
+                                    }
+                                }) }} />
                             ) : (
                                 <p className="whitespace-pre-wrap">
                                     {post.content}

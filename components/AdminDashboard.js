@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
-import DOMPurify from 'isomorphic-dompurify';
+import DOMPurify from 'dompurify';
 
 export default function AdminDashboard() {
     const [activeTab, setActiveTab] = useState('feed'); // 'feed' | 'users'
