@@ -1,23 +1,39 @@
 import { NextResponse } from 'next/server';
-import { redis } from '@/lib/redis';
+import { prisma } from '@/lib/prisma';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
     try {
-        // 1. Fetch last 20 IDs from ZSET (Reverse order: newest first)
-        const postKeys = await redis.zrange('community:feed:ids', 0, 19, { rev: true });
+        const posts = await prisma.post.findMany({
+            where: {
+                published: true
+            },
+            orderBy: {
+                createdAt: 'desc' // or date? redis code used 'score' which was timestamp.
+            },
+            take: 20,
+            include: {
+                user: {
+                    select: {
+                        name: true,
+                        image: true,
+                        id: true
+                    }
+                }
+            }
+        });
 
-        if (postKeys.length === 0) {
-            return NextResponse.json([]);
-        }
-
-        // 2. Fetch content for these keys
-        // Keys are now `posts:userId:date`
-        const posts = await redis.mget(...postKeys);
-
-        // 3. Filter and format
-        const feed = posts.filter(Boolean);
+        // Format to match the expected frontend structure
+        const feed = posts.map(post => ({
+            id: post.slug, // Use slug as ID for linking
+            userId: post.userId,
+            userName: post.user.name || 'Anonymous',
+            userImage: post.user.image,
+            date: post.date,
+            text: post.content,
+            publishedAt: post.createdAt.getTime()
+        }));
 
         return NextResponse.json(feed);
     } catch (error) {

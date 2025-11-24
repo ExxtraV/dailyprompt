@@ -3,16 +3,18 @@ import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import { useParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
-import { BookOpen, Calendar, Trophy, Flame, User } from 'lucide-react';
+import { BookOpen, Calendar, Trophy, Flame, User, Edit2 } from 'lucide-react';
 import ThemeToggle from '@/components/ThemeToggle';
+import EditProfileModal from '@/components/EditProfileModal';
 
 export default function ProfilePage() {
     const { userId } = useParams();
-    const { data: session } = useSession();
+    const { data: session, update: updateSession } = useSession();
     const router = useRouter();
     const [profile, setProfile] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+    const [isEditOpen, setIsEditOpen] = useState(false);
 
     useEffect(() => {
         if (userId) {
@@ -31,6 +33,16 @@ export default function ProfilePage() {
                 });
         }
     }, [userId]);
+
+    const handleUpdate = async (updatedData) => {
+        // Update local state
+        setProfile(prev => ({
+            ...prev,
+            user: { ...prev.user, ...updatedData }
+        }));
+        // Update session to reflect changes immediately in header/other places
+        await updateSession(updatedData);
+    };
 
     if (loading) {
         return (
@@ -58,6 +70,7 @@ export default function ProfilePage() {
     }
 
     const { user, stats, posts } = profile;
+    const isOwnProfile = session?.user?.id === user.id;
 
     return (
         <div className="min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100">
@@ -79,14 +92,12 @@ export default function ProfilePage() {
                 <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl overflow-hidden mb-8 border border-gray-100 dark:border-gray-700">
                     <div className="bg-gradient-to-r from-orange-400 to-red-500 h-32 relative"></div>
                     <div className="px-8 pb-8 relative">
-                        <div className="absolute -top-16 left-8">
-                            <div className="w-32 h-32 rounded-full border-4 border-white dark:border-gray-800 overflow-hidden bg-white shadow-md">
+                        <div className="absolute -top-16 left-8 group">
+                            <div className="w-32 h-32 rounded-full border-4 border-white dark:border-gray-800 overflow-hidden bg-white shadow-md relative">
                                 {user.image ? (
-                                    <Image
+                                    <img
                                         src={user.image}
                                         alt={user.name}
-                                        width={128}
-                                        height={128}
                                         className="w-full h-full object-cover"
                                     />
                                 ) : (
@@ -98,9 +109,17 @@ export default function ProfilePage() {
                         </div>
 
                         <div className="pt-16 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                            <div>
+                            <div className="flex items-center gap-3">
                                 <h1 className="text-3xl font-bold">{user.name}</h1>
-                                {/* Join Date can go here if we had it stored properly */}
+                                {isOwnProfile && (
+                                    <button
+                                        onClick={() => setIsEditOpen(true)}
+                                        className="p-1 text-gray-400 hover:text-orange-500 transition"
+                                        title="Edit Profile"
+                                    >
+                                        <Edit2 size={18} />
+                                    </button>
+                                )}
                             </div>
 
                             {/* Stats Overview */}
@@ -155,13 +174,13 @@ export default function ProfilePage() {
                     ) : (
                         <div className="space-y-6">
                             {posts.map(post => (
-                                <div key={post.id || post.date} className="border-b border-gray-100 dark:border-gray-700 last:border-0 pb-6 last:pb-0">
+                                <div key={post.id} className="border-b border-gray-100 dark:border-gray-700 last:border-0 pb-6 last:pb-0">
                                     <div className="flex items-center gap-2 mb-2 text-sm text-gray-500">
                                         <Calendar size={14} />
                                         <span>{post.date}</span>
                                     </div>
                                     {/* We link to the story page using the same slug format as Community Feed */}
-                                    <a href={`/community/${(post.id || '').replace(':', '-')}`} className="block group">
+                                    <a href={`/community/${post.slug}`} className="block group">
                                         <div className="bg-gray-50 dark:bg-gray-900 p-4 rounded-lg group-hover:ring-2 ring-orange-500 transition">
                                              <p className="line-clamp-3 text-gray-700 dark:text-gray-300 leading-relaxed">
                                                 {post.text}
@@ -177,6 +196,13 @@ export default function ProfilePage() {
                     )}
                 </div>
             </div>
+
+            <EditProfileModal
+                isOpen={isEditOpen}
+                onClose={() => setIsEditOpen(false)}
+                user={user}
+                onUpdate={handleUpdate}
+            />
         </div>
     );
 }

@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
-import { authOptions } from '@/app/api/auth/[...nextauth]/route';
-import { updateUserDisplayName } from '@/lib/user';
+import { authOptions } from '@/lib/auth';
+import { prisma } from '@/lib/prisma';
 
 export async function PATCH(request) {
     const session = await getServerSession(authOptions);
@@ -10,18 +10,27 @@ export async function PATCH(request) {
     }
 
     const body = await request.json();
-    const { name } = body;
+    const { name, image } = body; // Added image support
 
-    if (!name || name.trim().length === 0) {
-        return NextResponse.json({ message: 'Name is required' }, { status: 400 });
+    if ((!name || name.trim().length === 0) && !image) {
+        return NextResponse.json({ message: 'Name or Image is required' }, { status: 400 });
     }
 
     const userId = session.user.id;
-    const success = await updateUserDisplayName(userId, name);
 
-    if (!success) {
+    try {
+        const dataToUpdate = {};
+        if (name && name.trim().length > 0) dataToUpdate.name = name.trim();
+        if (image && image.trim().length > 0) dataToUpdate.image = image.trim();
+
+        await prisma.user.update({
+            where: { id: userId },
+            data: dataToUpdate
+        });
+
+        return NextResponse.json({ success: true, ...dataToUpdate });
+    } catch (error) {
+        console.error("Update Profile Error:", error);
         return NextResponse.json({ message: 'Failed to update user' }, { status: 500 });
     }
-
-    return NextResponse.json({ success: true, name: name.trim() });
 }

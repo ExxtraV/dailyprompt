@@ -1,24 +1,22 @@
-import { redis } from '@/lib/redis';
+import { prisma } from '@/lib/prisma';
 import PromptArchiveClient from '@/components/PromptArchiveClient';
 import { notFound } from 'next/navigation';
 
 export async function generateMetadata({ params }) {
     const { date } = await params;
 
-    // Check new key first, then fallback
-    let promptText = await redis.get(`prompts:${date}`);
-    if (!promptText) {
-        promptText = await redis.get(`prompt:${date}`);
-    }
+    const prompt = await prisma.prompt.findUnique({
+        where: { date: date }
+    });
 
-    if (!promptText) return { title: 'Prophecy Not Found' };
+    if (!prompt) return { title: 'Prophecy Not Found' };
 
     return {
         title: `Writing Prompt for ${date} | Run & Write`,
-        description: `Creative writing prompt for ${date}: ${promptText.substring(0, 120)}...`,
+        description: `Creative writing prompt for ${date}: ${prompt.text.substring(0, 120)}...`,
         openGraph: {
             title: `Writing Prompt for ${date} | Run & Write`,
-            description: `${promptText.substring(0, 120)}...`,
+            description: `${prompt.text.substring(0, 120)}...`,
             type: 'website',
             url: `https://prompt.run-write.com/prompt/${date}`,
         }
@@ -28,13 +26,11 @@ export async function generateMetadata({ params }) {
 export default async function PromptPage({ params }) {
     const { date } = await params;
 
-    // Check new key first, then fallback
-    let promptText = await redis.get(`prompts:${date}`);
-    if (!promptText) {
-        promptText = await redis.get(`prompt:${date}`);
-    }
+    const prompt = await prisma.prompt.findUnique({
+        where: { date: date }
+    });
 
-    if (!promptText) {
+    if (!prompt) {
         notFound();
     }
 
@@ -48,23 +44,20 @@ export default async function PromptPage({ params }) {
     nextDate.setDate(currentDate.getDate() + 1);
     const nextDateStr = nextDate.toISOString().split('T')[0];
 
-    // Check if next/prev exist (using new keys mostly, but could check old)
-    // We'll check both for existence to be safe during migration
-    const [prevNew, prevOld, nextNew, nextOld] = await Promise.all([
-        redis.exists(`prompts:${prevDateStr}`),
-        redis.exists(`prompt:${prevDateStr}`),
-        redis.exists(`prompts:${nextDateStr}`),
-        redis.exists(`prompt:${nextDateStr}`)
+    // Check if next/prev exist in the database
+    const [prevPrompt, nextPrompt] = await Promise.all([
+        prisma.prompt.findUnique({ where: { date: prevDateStr }, select: { id: true } }),
+        prisma.prompt.findUnique({ where: { date: nextDateStr }, select: { id: true } })
     ]);
 
     return (
         <PromptArchiveClient
-            prompt={promptText}
+            prompt={prompt.text}
             date={date}
             prevDateStr={prevDateStr}
             nextDateStr={nextDateStr}
-            prevPromptExists={prevNew === 1 || prevOld === 1}
-            nextPromptExists={nextNew === 1 || nextOld === 1}
+            prevPromptExists={!!prevPrompt}
+            nextPromptExists={!!nextPrompt}
         />
     );
 }

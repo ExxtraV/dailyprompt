@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { redis } from '@/lib/redis';
+import { prisma } from '@/lib/prisma';
 import { BADGES } from '@/lib/gamification';
 
 export const dynamic = 'force-dynamic';
@@ -7,47 +7,47 @@ export const dynamic = 'force-dynamic';
 export async function GET(request, { params }) {
     const { userId } = await params;
 
-    // 1. Fetch User Basic Info (Auth)
-    // Note: `user:{id}` is the NextAuth key. It contains name, email, image.
-    const userData = await redis.get(`user:${userId}`);
+    // Fetch User with Relations
+    const user = await prisma.user.findUnique({
+        where: { id: userId },
+        include: {
+            badges: true,
+            posts: {
+                where: { published: true },
+                orderBy: { createdAt: 'desc' }
+            }
+        }
+    });
 
-    if (!userData) {
+    if (!user) {
         return NextResponse.json({ message: 'User not found' }, { status: 404 });
     }
 
     // Filter sensitive data
     const safeUser = {
         id: userId,
-        name: userData.name,
-        image: userData.image,
-        // Do NOT include email
+        name: user.name,
+        image: user.image,
     };
 
-    // 2. Fetch Stats (Consolidated Hash)
-    const statsHash = await redis.hgetall(`users:${userId}:stats`) || {};
-    const streak = parseInt(statsHash.streak || 0, 10);
-    const totalWords = parseInt(statsHash.totalWords || 0, 10);
+    // Hydrate badges
+    const earnedBadgeNames = user.badges.map(b => b.name);
+    const earnedBadges = BADGES.filter(b => earnedBadgeNames.includes(b.id));
 
-    // 3. Fetch Badges
-    const userBadges = await redis.smembers(`users:${userId}:badges`);
-    const earnedBadges = BADGES.filter(b => userBadges.includes(b.id));
-
-    // 4. Fetch Published Posts
-    // Use the new ZSET index: `users:{userId}:posts`
-    // Get all posts, reverse ordered (newest first)
-    const postKeys = await redis.zrange(`users:${userId}:posts`, 0, -1, { rev: true });
-
-    let posts = [];
-    if (postKeys.length > 0) {
-        const rawPosts = await redis.mget(...postKeys);
-        posts = rawPosts.filter(Boolean);
-    }
+    // Format posts
+    const posts = user.posts.map(post => ({
+        id: post.id,
+        slug: post.slug,
+        date: post.date,
+        text: post.content,
+        publishedAt: post.createdAt
+    }));
 
     return NextResponse.json({
         user: safeUser,
         stats: {
-            streak,
-            totalWords,
+            streak: user.streak,
+            totalWords: user.totalWords,
             badges: earnedBadges
         },
         posts
