@@ -2,6 +2,7 @@ import { redis } from '@/lib/redis';
 import Link from 'next/link';
 import { ArrowLeft, Calendar, User } from 'lucide-react';
 import { notFound } from 'next/navigation';
+import ThemeToggle from '@/components/ThemeToggle';
 
 export async function generateMetadata({ params }) {
     const { slug } = await params;
@@ -55,7 +56,10 @@ export default async function StoryPage({ params }) {
     }
 
     return (
-        <div className="min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-800 dark:text-gray-200 p-8">
+        <div className="min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-800 dark:text-gray-200 p-8 relative">
+             <div className="absolute top-4 right-4 z-10">
+                <ThemeToggle />
+            </div>
             <div className="max-w-3xl mx-auto">
                 <Link href="/community" className="inline-flex items-center gap-2 mb-8 text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-white transition">
                     <ArrowLeft size={20} /> Back to Feed
