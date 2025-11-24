@@ -71,7 +71,7 @@ export default function CommunityPage() {
 
                             <div className="prose dark:prose-invert max-w-none relative">
                                 <p className="text-gray-700 dark:text-gray-300 leading-relaxed line-clamp-3">
-                                    {item.text}
+                                    {item.text.replace(/<[^>]*>/g, ' ')}
                                 </p>
                                 <div className="mt-4">
                                     <Link
