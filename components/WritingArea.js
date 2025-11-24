@@ -2,6 +2,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { ChevronDown, ChevronUp, Cloud, CloudOff, Loader2, Globe, XCircle } from 'lucide-react';
 import { useSession } from 'next-auth/react';
+import Editor from './Editor';
 
 export default function WritingArea({
     onWordCountChange,
@@ -128,9 +129,10 @@ export default function WritingArea({
 
     function getWordCount(str) {
         if (!str) return 0;
-        const trimmed = str.trim();
-        if (!trimmed) return 0;
-        return trimmed.split(/\s+/).length;
+        // Strip HTML tags
+        const plainText = str.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+        if (!plainText) return 0;
+        return plainText.split(/\s+/).length;
     }
 
     const currentWordCount = getWordCount(text);
@@ -243,14 +245,11 @@ export default function WritingArea({
                             </div>
                         )}
                     </div>
-                    <textarea
-                        id="writingArea"
-                        rows="8"
-                        className="w-full p-3 border border-orange-200 rounded-md focus:ring-2 focus:ring-orange-400 focus:border-orange-400 resize-none dark:bg-gray-800 dark:border-gray-600 dark:text-gray-100"
+                    <Editor
+                        initialContent={text}
+                        onChange={setText}
                         placeholder={`Write something for ${activeDate}...`}
-                        value={text}
-                        onChange={(e) => setText(e.target.value)}
-                    ></textarea>
+                    />
 
                     <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                         <div className="flex flex-col sm:flex-row gap-4">
