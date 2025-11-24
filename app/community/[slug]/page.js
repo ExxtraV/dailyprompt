@@ -1,59 +1,43 @@
-import { redis } from '@/lib/redis';
+import { prisma } from '@/lib/prisma';
 import Link from 'next/link';
-import { ArrowLeft, Calendar, User } from 'lucide-react';
+import { ArrowLeft, User } from 'lucide-react';
 import { notFound } from 'next/navigation';
 import ThemeToggle from '@/components/ThemeToggle';
 
 export async function generateMetadata({ params }) {
     const { slug } = await params;
 
-    // Parse Slug (Format: userId-date, where date is last 10 chars YYYY-MM-DD)
-    const datePart = slug.slice(-10);
-    const userIdPart = slug.slice(0, -11);
-
-    // Check New Key
-    let post = await redis.get(`posts:${userIdPart}:${datePart}`);
-
-    // Check Old Key (Fallback)
-    if (!post) {
-        post = await redis.get(`post:${userIdPart}:${datePart}`);
-    }
+    const post = await prisma.post.findUnique({
+        where: { slug: slug },
+        include: { user: true }
+    });
 
     if (!post) return { title: 'Story Not Found' };
 
     return {
-        title: `${post.userName}'s Story | Run & Write`,
+        title: `${post.user.name || 'Anonymous'}'s Story | Run & Write`,
         description: `Read a response to the prompt from ${post.date}.`
     };
 }
 
 export default async function StoryPage({ params }) {
     const { slug } = await params;
-    const datePart = slug.slice(-10);
-    const userIdPart = slug.slice(0, -11);
 
-    // Keys
-    const newPostKey = `posts:${userIdPart}:${datePart}`;
-    const oldPostKey = `post:${userIdPart}:${datePart}`;
-
-    const newPromptKey = `prompts:${datePart}`;
-    const oldPromptKey = `prompt:${datePart}`;
-
-    // Fetch Data (Parallel lookup for efficiency, though we might fetch duplicates)
-    // We check new keys first.
-    const [newPost, oldPost, newPrompt, oldPrompt] = await Promise.all([
-        redis.get(newPostKey),
-        redis.get(oldPostKey),
-        redis.get(newPromptKey),
-        redis.get(oldPromptKey)
-    ]);
-
-    const post = newPost || oldPost;
-    const promptText = newPrompt || oldPrompt;
+    const post = await prisma.post.findUnique({
+        where: { slug: slug },
+        include: {
+            user: true
+        }
+    });
 
     if (!post) {
         notFound();
     }
+
+    const prompt = await prisma.prompt.findUnique({
+        where: { date: post.date }
+    });
+    const promptText = prompt ? prompt.text : "Prompt archive unavailable.";
 
     return (
         <div className="min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-800 dark:text-gray-200 p-8 relative">
@@ -72,7 +56,7 @@ export default async function StoryPage({ params }) {
                             Prompt for {post.date}
                         </p>
                         <p className="text-lg font-medium text-gray-800 dark:text-gray-200 italic">
-                            {promptText || "Prompt archive unavailable."}
+                            {promptText}
                         </p>
                     </div>
 
@@ -81,10 +65,10 @@ export default async function StoryPage({ params }) {
                         <div className="flex items-center gap-4 mb-6">
                             {/* Link to User Profile */}
                             <Link href={`/profile/${post.userId}`} className="flex items-center gap-4 group">
-                                {post.userImage ? (
+                                {post.user.image ? (
                                     <img
-                                        src={post.userImage}
-                                        alt={post.userName}
+                                        src={post.user.image}
+                                        alt={post.user.name}
                                         className="w-12 h-12 rounded-full border border-gray-200 dark:border-gray-600 group-hover:ring-2 ring-orange-500 transition"
                                     />
                                 ) : (
@@ -93,9 +77,9 @@ export default async function StoryPage({ params }) {
                                     </div>
                                 )}
                                 <div>
-                                    <h1 className="text-xl font-bold text-gray-900 dark:text-white group-hover:text-orange-500 transition">{post.userName}</h1>
+                                    <h1 className="text-xl font-bold text-gray-900 dark:text-white group-hover:text-orange-500 transition">{post.user.name || 'Anonymous'}</h1>
                                     <p className="text-sm text-gray-500 dark:text-gray-400">
-                                        Published on {new Date(post.publishedAt).toLocaleDateString()}
+                                        Published on {new Date(post.createdAt).toLocaleDateString()}
                                     </p>
                                 </div>
                             </Link>
@@ -103,7 +87,7 @@ export default async function StoryPage({ params }) {
 
                         <div className="prose dark:prose-invert max-w-none">
                             <p className="whitespace-pre-wrap text-gray-800 dark:text-gray-300 leading-relaxed text-lg">
-                                {post.text}
+                                {post.content}
                             </p>
                         </div>
                     </div>

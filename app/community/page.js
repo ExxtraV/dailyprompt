@@ -75,7 +75,7 @@ export default function CommunityPage() {
                                 </p>
                                 <div className="mt-4">
                                     <Link
-                                        href={`/community/${item.id.replace(':', '-')}`} // Ensure safe URL slug if ID has colons
+                                        href={`/community/${item.id}`}
                                         className="inline-flex items-center text-sm font-bold text-orange-600 hover:text-orange-700 dark:text-orange-500 dark:hover:text-orange-400"
                                     >
                                         Read full story &rarr;

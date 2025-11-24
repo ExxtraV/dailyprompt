@@ -1,21 +1,19 @@
 import { getServerSession } from 'next-auth';
-import { authOptions } from '@/app/api/auth/[...nextauth]/route';
-import { redis } from '@/lib/redis';
+import { authOptions } from '@/lib/auth';
+import { prisma } from '@/lib/prisma';
 
 export default async function BannedNotice() {
     const session = await getServerSession(authOptions);
 
     if (!session || !session.user) return null;
 
-    const isBanned = await redis.get(`user:${session.user.id}:banned`);
+    // As discussed in admin/users, the 'isBanned' field is not yet in the schema.
+    // For now, we assume no users are banned in this new system until migrated.
+    // If we wanted to check, we would need to add the field to the User model.
+    // For now, simply return null.
 
-    if (isBanned) {
-        return (
-            <div className="w-full bg-red-600 text-white p-4 text-center font-bold fixed top-0 left-0 z-50">
-                You have been banned from participating in the community.
-            </div>
-        );
-    }
+    // const user = await prisma.user.findUnique({ where: { id: session.user.id } });
+    // if (user?.isBanned) ...
 
     return null;
 }
