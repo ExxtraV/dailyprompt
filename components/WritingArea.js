@@ -179,11 +179,22 @@ export default function WritingArea({
             return;
         }
         try {
-            await navigator.clipboard.writeText(text);
+            const type = "text/html";
+            const blob = new Blob([text], { type });
+            const data = [new ClipboardItem({ [type]: blob })];
+            await navigator.clipboard.write(data);
             setExportStatus('Draft copied to clipboard!');
             setTimeout(() => setExportStatus(''), 3000);
         } catch (err) {
-            setExportStatus('Copy failed.');
+            // Fallback for browsers that don't support ClipboardItem or write
+            try {
+                // Strip tags for fallback
+                const plainText = text.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+                await navigator.clipboard.writeText(plainText);
+                setExportStatus('Copied as plain text (browser limit).');
+            } catch (e) {
+                setExportStatus('Copy failed.');
+            }
         }
     };
 
@@ -192,11 +203,23 @@ export default function WritingArea({
             setExportStatus('Nothing to download yet.');
             return;
         }
-        const blob = new Blob([text], { type: 'text/plain' });
+        const htmlContent = `
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Run & Write Draft - ${activeDate}</title>
+<style>body { font-family: sans-serif; line-height: 1.6; max-width: 800px; margin: 2rem auto; padding: 0 1rem; }</style>
+</head>
+<body>
+${text}
+</body>
+</html>`;
+        const blob = new Blob([htmlContent], { type: 'text/html' });
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = url;
-        link.download = `run-write-${activeDate}.txt`;
+        link.download = `run-write-${activeDate}.html`;
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
