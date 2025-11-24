@@ -7,13 +7,18 @@ export default async function BannedNotice() {
 
     if (!session || !session.user) return null;
 
-    // As discussed in admin/users, the 'isBanned' field is not yet in the schema.
-    // For now, we assume no users are banned in this new system until migrated.
-    // If we wanted to check, we would need to add the field to the User model.
-    // For now, simply return null.
+    const user = await prisma.user.findUnique({
+        where: { id: session.user.id },
+        select: { isBanned: true }
+    });
 
-    // const user = await prisma.user.findUnique({ where: { id: session.user.id } });
-    // if (user?.isBanned) ...
+    if (user?.isBanned) {
+        return (
+            <div className="w-full bg-red-600 text-white p-4 text-center font-bold fixed top-0 left-0 z-50">
+                You have been banned from participating in the community.
+            </div>
+        );
+    }
 
     return null;
 }
