@@ -53,6 +53,8 @@ model User {
   totalWords    Int       @default(0)
   streak        Int       @default(0)
   lastActive    DateTime? @default(now())
+
+  isBanned      Boolean   @default(false)
 }
 
 model VerificationToken {

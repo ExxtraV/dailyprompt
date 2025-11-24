@@ -36,6 +36,18 @@ export async function POST(request) {
         return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
     }
 
+    const userId = session.user.id;
+
+    // Check if user is banned
+    const user = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { isBanned: true }
+    });
+
+    if (user?.isBanned) {
+        return NextResponse.json({ message: 'User is banned' }, { status: 403 });
+    }
+
     const body = await request.json();
     const { date, text, published } = body;
 
@@ -43,19 +55,11 @@ export async function POST(request) {
         return NextResponse.json({ message: 'Invalid payload' }, { status: 400 });
     }
 
-    const userId = session.user.id;
     const wordCount = text.trim() === '' ? 0 : text.trim().split(/\s+/).length;
 
     // Create or Update Post
     const post = await prisma.post.upsert({
         where: {
-            // We need a unique constraint to upsert.
-            // In Prisma schema we didn't add @@unique([userId, date]),
-            // but we can find the existing one first or add the constraint.
-            // Let's use findFirst then update/create manually since schema changes are "expensive" in this flow
-            // Actually, we can just use a transaction or findFirst.
-            // But wait, `slug` is unique. We construct slug as `${userId}-${date}` usually?
-            // Let's construct a deterministic slug.
              slug: `${userId.replace(/[^a-zA-Z0-9]/g, '-')}-${date}`
         },
         update: {
@@ -74,11 +78,9 @@ export async function POST(request) {
     });
 
     // --- Stats Calculation ---
+    // (Rest of the stats calculation remains the same)
 
     // 1. Total Words
-    // We can recalculate total words from scratch to be accurate,
-    // or keep an incremental counter on User.
-    // Aggregation is safer and cleaner for "better database".
     const totalWordsResult = await prisma.post.aggregate({
         where: { userId: userId },
         _sum: { wordCount: true }
@@ -86,7 +88,6 @@ export async function POST(request) {
     const totalWords = totalWordsResult._sum.wordCount || 0;
 
     // 2. Streak
-    // Fetch all dates where wordCount >= 150
     const activePosts = await prisma.post.findMany({
         where: {
             userId: userId,
@@ -96,23 +97,11 @@ export async function POST(request) {
         orderBy: { date: 'desc' }
     });
 
-    const sortedDates = activePosts.map(p => p.date); // Dates are strings YYYY-MM-DD
+    const sortedDates = activePosts.map(p => p.date);
     let currentStreak = 0;
 
     if (sortedDates.length > 0) {
         const dateSet = new Set(sortedDates);
-        const todayStr = new Date().toISOString().split('T')[0];
-
-        // Start checking from today or yesterday
-        let cursor = new Date();
-        // If they haven't written today, check if they wrote yesterday to keep streak alive
-        if (!dateSet.has(todayStr)) {
-             // If latest post was yesterday, streak is alive (but 0 for today until they write? No, streak is how many CONSECUTIVE days ending yesterday or today).
-             // Standard logic: if they missed yesterday, streak is 0.
-        }
-
-        // Logic from previous code:
-        // Find the latest active date.
         const latestDateStr = sortedDates[0];
         const latestDate = new Date(latestDateStr);
         const today = new Date();
@@ -123,9 +112,8 @@ export async function POST(request) {
         const diffDays = Math.floor(diffTime / (24 * 60 * 60 * 1000));
 
         if (diffDays <= 1) {
-            // Streak is alive. Calculate it.
             let tempStreak = 0;
-            let checkDate = new Date(latestDateStr); // Start from the last active day
+            let checkDate = new Date(latestDateStr);
             while (true) {
                 const dStr = checkDate.toISOString().split('T')[0];
                 if (dateSet.has(dStr)) {
@@ -141,7 +129,6 @@ export async function POST(request) {
         }
     }
 
-    // Update User Stats
     await prisma.user.update({
         where: { id: userId },
         data: {

@@ -17,29 +17,15 @@ export async function GET(request) {
 
     try {
         const users = await prisma.user.findMany({
-            orderBy: { name: 'asc' } // Or whatever order
+            orderBy: { name: 'asc' }
         });
-
-        // The current implementation of Prisma schema does not have 'isBanned'.
-        // The original Redis code used `user:{id}:banned`.
-        // We haven't migrated this state to the User model yet.
-        // For now, we will return users without banned status or assume false,
-        // UNLESS we add 'isBanned' to the schema.
-
-        // Given the request was for "better database", let's assume we want to support this.
-        // However, I cannot easily change the schema and re-generate mid-flight without risking "drift".
-        // But since this is a fresh setup/migration plan, I CAN add it to the schema now if I want to be thorough.
-        // BUT, I've already generated the client.
-
-        // Let's stick to what's in the schema. I'll return the users.
-        // Banning functionality will be temporarily unavailable until schema is updated.
 
         const safeUsers = users.map(u => ({
             id: u.id,
             name: u.name,
             email: u.email,
             image: u.image,
-            isBanned: false // Placeholder until schema update
+            isBanned: u.isBanned // Now using the real field
         }));
 
         return NextResponse.json(safeUsers);
@@ -57,26 +43,27 @@ export async function PATCH(request) {
     }
 
     const body = await request.json();
-    const { userId, name } = body; // Removed isBanned support for now
+    const { userId, name, isBanned } = body;
 
     if (!userId) {
         return NextResponse.json({ message: 'User ID required' }, { status: 400 });
     }
 
     try {
-        if (name !== undefined) {
-             await prisma.user.update({
-                where: { id: userId },
-                data: { name: name }
-             });
-        }
+        const data = {};
+        if (name !== undefined) data.name = name;
+        if (isBanned !== undefined) data.isBanned = isBanned;
 
-        // Banning logic commented out until schema supports it
-        /*
-        if (isBanned !== undefined) {
-            // Update user.isBanned = isBanned
-        }
-        */
+        await prisma.user.update({
+            where: { id: userId },
+            data: data
+        });
+
+        // If banning, maybe unpublish their posts?
+        // For now, we just stop them from posting new things.
+        // But let's optionally unpublish all their posts if banned?
+        // The prompt didn't strictly say so, but usually that's desired.
+        // I'll stick to just the banning flag for now.
 
         return NextResponse.json({ success: true });
     } catch (error) {
