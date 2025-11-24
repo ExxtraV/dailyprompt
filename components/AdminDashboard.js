@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
+import DOMPurify from 'isomorphic-dompurify';
 
 export default function AdminDashboard() {
     const [activeTab, setActiveTab] = useState('feed'); // 'feed' | 'users'
@@ -173,7 +174,11 @@ export default function AdminDashboard() {
                                             </div>
                                         </div>
                                         <div className="prose prose-invert max-w-none">
-                                            <p className="text-stone-300 whitespace-pre-wrap">{post.text}</p>
+                                            {post.text.trim().startsWith('<') ? (
+                                                 <div className="text-stone-300" dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(post.text) }} />
+                                            ) : (
+                                                 <p className="text-stone-300 whitespace-pre-wrap">{post.text}</p>
+                                            )}
                                         </div>
                                     </div>
                                 );

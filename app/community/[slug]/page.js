@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { ArrowLeft, User } from 'lucide-react';
 import { notFound } from 'next/navigation';
 import ThemeToggle from '@/components/ThemeToggle';
+import DOMPurify from 'isomorphic-dompurify';
 
 export async function generateMetadata({ params }) {
     const { slug } = await params;
@@ -38,6 +39,9 @@ export default async function StoryPage({ params }) {
         where: { date: post.date }
     });
     const promptText = prompt ? prompt.text : "Prompt archive unavailable.";
+
+    // Helper to detect if content is HTML-ish. Simple check, but practical for this migration.
+    const isHtml = post.content.trim().startsWith('<');
 
     return (
         <div className="min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-800 dark:text-gray-200 p-8 relative">
@@ -85,10 +89,14 @@ export default async function StoryPage({ params }) {
                             </Link>
                         </div>
 
-                        <div className="prose dark:prose-invert max-w-none">
-                            <p className="whitespace-pre-wrap text-gray-800 dark:text-gray-300 leading-relaxed text-lg">
-                                {post.content}
-                            </p>
+                        <div className="prose dark:prose-invert max-w-none text-gray-800 dark:text-gray-300 leading-relaxed text-lg">
+                            {isHtml ? (
+                                <div dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(post.content) }} />
+                            ) : (
+                                <p className="whitespace-pre-wrap">
+                                    {post.content}
+                                </p>
+                            )}
                         </div>
                     </div>
                 </div>
