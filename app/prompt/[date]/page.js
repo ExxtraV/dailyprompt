@@ -4,8 +4,12 @@ import { notFound } from 'next/navigation';
 
 export async function generateMetadata({ params }) {
     const { date } = await params;
-    const key = `prompt:${date}`;
-    const promptText = await redis.get(key);
+
+    // Check new key first, then fallback
+    let promptText = await redis.get(`prompts:${date}`);
+    if (!promptText) {
+        promptText = await redis.get(`prompt:${date}`);
+    }
 
     if (!promptText) return { title: 'Prophecy Not Found' };
 
@@ -23,8 +27,12 @@ export async function generateMetadata({ params }) {
 
 export default async function PromptPage({ params }) {
     const { date } = await params;
-    const key = `prompt:${date}`;
-    const promptText = await redis.get(key);
+
+    // Check new key first, then fallback
+    let promptText = await redis.get(`prompts:${date}`);
+    if (!promptText) {
+        promptText = await redis.get(`prompt:${date}`);
+    }
 
     if (!promptText) {
         notFound();
@@ -40,9 +48,14 @@ export default async function PromptPage({ params }) {
     nextDate.setDate(currentDate.getDate() + 1);
     const nextDateStr = nextDate.toISOString().split('T')[0];
 
-    // Check if next/prev exist
-    const prevPromptExists = await redis.exists(`prompt:${prevDateStr}`);
-    const nextPromptExists = await redis.exists(`prompt:${nextDateStr}`);
+    // Check if next/prev exist (using new keys mostly, but could check old)
+    // We'll check both for existence to be safe during migration
+    const [prevNew, prevOld, nextNew, nextOld] = await Promise.all([
+        redis.exists(`prompts:${prevDateStr}`),
+        redis.exists(`prompt:${prevDateStr}`),
+        redis.exists(`prompts:${nextDateStr}`),
+        redis.exists(`prompt:${nextDateStr}`)
+    ]);
 
     return (
         <PromptArchiveClient
@@ -50,8 +63,8 @@ export default async function PromptPage({ params }) {
             date={date}
             prevDateStr={prevDateStr}
             nextDateStr={nextDateStr}
-            prevPromptExists={prevPromptExists === 1}
-            nextPromptExists={nextPromptExists === 1}
+            prevPromptExists={prevNew === 1 || prevOld === 1}
+            nextPromptExists={nextNew === 1 || nextOld === 1}
         />
     );
 }

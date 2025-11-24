@@ -7,14 +7,14 @@ export async function POST(request) {
         const { action, prompt } = body;
 
         if (action === 'get_history') {
-            const keys = await redis.keys('prompt:*');
+            const keys = await redis.keys('prompts:*');
             if (keys.length === 0) {
                 return NextResponse.json([]);
             }
             const prompts = await redis.mget(...keys);
 
             const history = keys.map((key, index) => ({
-                date: key.replace('prompt:', ''),
+                date: key.replace('prompts:', ''),
                 prompt: prompts[index]
             })).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
@@ -23,7 +23,7 @@ export async function POST(request) {
 
         if (action === 'get_today') {
             const todayUTC = new Date().toISOString().split('T')[0];
-            const key = `prompt:${todayUTC}`;
+            const key = `prompts:${todayUTC}`;
 
             let storedPrompt = await redis.get(key);
 
@@ -47,17 +47,23 @@ export async function POST(request) {
             ];
             const randomTheme = themes[Math.floor(Math.random() * themes.length)];
 
-            const finalPrompt = `Generate a creative writing prompt for a creative writer.
+            // Enhanced system prompt to ensure variety and reduce repetition
+            const finalPrompt = `Generate a unique and creative writing prompt for a creative writer.
             The theme for today is: ${randomTheme}.
             The prompt should be evocative, open-ended, and suitable for any genre within that theme.
             It should inspire a scene, a character, or a story.
-            Be creative and avoid clichés.
-            It should only be 2-3 sentences, do not return formatting.`;
+
+            IMPORTANT GUIDELINES:
+            - Be creative and avoid clichés.
+            - Do NOT use common tropes like finding a mysterious key, a hidden door, or a music box unless you twist it significantly.
+            - Ensure the prompt is distinct from typical generic prompts.
+            - It should only be 2-3 sentences.
+            - Do not return formatting (no markdown, no bold text).`;
 
             const payload = {
                 contents: [{ parts: [{ text: finalPrompt }] }],
                 generationConfig: {
-                    temperature: 1.0
+                    temperature: 1.0 // High temperature for variety
                 }
             };
 

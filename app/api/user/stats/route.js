@@ -12,9 +12,10 @@ export async function GET(request) {
 
     const userId = session.user.id;
 
-    const streak = await redis.get(`user:${userId}:stats:streak`) || 0;
-    const totalWords = await redis.get(`user:${userId}:stats:totalWords`) || 0;
-    const userBadges = await redis.smembers(`user:${userId}:badges`);
+    const statsHash = await redis.hgetall(`users:${userId}:stats`) || {};
+    const streak = statsHash.streak || 0;
+    const totalWords = statsHash.totalWords || 0;
+    const userBadges = await redis.smembers(`users:${userId}:badges`);
 
     // Fetch Fresh User Data (Name might have changed)
     const userData = await redis.get(`user:${userId}`);
