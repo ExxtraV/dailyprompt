@@ -25,7 +25,7 @@ export async function GET(request) {
             name: u.name,
             email: u.email,
             image: u.image,
-            isBanned: u.isBanned // Now using the real field
+            isBanned: u.isBanned
         }));
 
         return NextResponse.json(safeUsers);
@@ -52,18 +52,24 @@ export async function PATCH(request) {
     try {
         const data = {};
         if (name !== undefined) data.name = name;
-        if (isBanned !== undefined) data.isBanned = isBanned;
+
+        // Handle Banning Logic
+        if (isBanned !== undefined) {
+            data.isBanned = isBanned;
+
+            if (isBanned === true) {
+                // Delete (or unpublish) all posts by this user
+                // The requirement was "delete that user's posts"
+                await prisma.post.deleteMany({
+                    where: { userId: userId }
+                });
+            }
+        }
 
         await prisma.user.update({
             where: { id: userId },
             data: data
         });
-
-        // If banning, maybe unpublish their posts?
-        // For now, we just stop them from posting new things.
-        // But let's optionally unpublish all their posts if banned?
-        // The prompt didn't strictly say so, but usually that's desired.
-        // I'll stick to just the banning flag for now.
 
         return NextResponse.json({ success: true });
     } catch (error) {
