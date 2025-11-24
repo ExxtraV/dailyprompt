@@ -14,7 +14,8 @@ import {
     Quote,
     Maximize,
     Minimize,
-    Type
+    Type,
+    Code
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 
@@ -153,6 +154,13 @@ export default function Editor({ initialContent, onChange, placeholder = 'Start 
                     title="Quote"
                 >
                     <Quote size={18} />
+                </ToolbarButton>
+                <ToolbarButton
+                    onClick={() => editor.chain().focus().toggleCodeBlock().run()}
+                    isActive={editor.isActive('codeBlock')}
+                    title="Code Block"
+                >
+                    <Code size={18} />
                 </ToolbarButton>
 
                 <div className="flex-grow" />
