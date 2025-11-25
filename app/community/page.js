@@ -41,7 +41,26 @@ export default function CommunityPage() {
 
                 <div className="space-y-6">
                     {feed.map((item) => (
-                        <div key={item.id} className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 border border-gray-200 dark:border-gray-700 transition hover:shadow-xl relative group-card">
+                        <div
+                            key={item.id}
+                            className={`
+                                rounded-xl shadow-lg p-6 border transition hover:shadow-xl relative group-card
+                                ${item.pinType === 'announcement'
+                                    ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800'
+                                    : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700'}
+                            `}
+                        >
+                            {item.pinType === 'announcement' && (
+                                <div className="absolute top-0 right-0 bg-blue-500 text-white text-xs font-bold px-3 py-1 rounded-bl-lg rounded-tr-lg z-20 shadow-sm flex items-center gap-1">
+                                    <span>📢 Announcement</span>
+                                </div>
+                            )}
+                            {item.pinType === 'favorite' && (
+                                <div className="absolute top-0 right-0 bg-amber-500 text-white text-xs font-bold px-3 py-1 rounded-bl-lg rounded-tr-lg z-20 shadow-sm flex items-center gap-1">
+                                    <span>★ Editor's Pick</span>
+                                </div>
+                            )}
+
                             <Link href={`/community/${item.id}`} className="absolute inset-0 z-0" aria-label="Read full story"></Link>
                             <div className="flex items-center justify-between mb-4 border-b border-gray-100 dark:border-gray-700 pb-4 relative z-10">
                                 <div className="flex items-center gap-3">

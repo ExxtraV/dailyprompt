@@ -71,6 +71,7 @@ model Post {
   title       String?
   content     String   @db.Text
   published   Boolean  @default(false)
+  pinType     String   @default("none") // "none", "favorite", "announcement"
   wordCount   Int      @default(0)
   date        String   // YYYY-MM-DD format (to match existing prompt logic)
   createdAt   DateTime @default(now())
