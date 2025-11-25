@@ -44,10 +44,12 @@ model User {
   email         String?   @unique
   emailVerified DateTime?
   image         String?
+  role          String    @default("USER") // "USER", "ADMIN", "OWNER"
   accounts      Account[]
   sessions      Session[]
   posts         Post[]
   badges        Badge[]
+  likes         Like[]
 
   // Stats can be calculated via aggregations, but storing them can be faster for frequent access
   totalWords    Int       @default(0)
@@ -79,9 +81,25 @@ model Post {
 
   userId      String
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  likes       Like[]
 
   @@index([userId])
   @@index([date])
+}
+
+model Like {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  postId    String
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, postId])
+  @@index([userId])
+  @@index([postId])
 }
 
 model Prompt {
