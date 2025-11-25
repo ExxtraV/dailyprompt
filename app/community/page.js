@@ -75,9 +75,9 @@ export default function CommunityPage() {
                                     {item.text.replace(/<[^>]*>/g, ' ')}
                                 </p>
                             </div>
-                            <div className="mt-4 relative z-10">
+                            <div className="mt-4 relative z-10 pointer-events-none">
                                 <span
-                                    className="inline-flex items-center text-sm font-bold text-orange-600 group-card-hover:text-orange-700 dark:text-orange-500 dark:group-card-hover:text-orange-400 pointer-events-none"
+                                    className="inline-flex items-center text-sm font-bold text-orange-600 group-card-hover:text-orange-700 dark:text-orange-500 dark:group-card-hover:text-orange-400"
                                 >
                                     Read full story &rarr;
                                 </span>
