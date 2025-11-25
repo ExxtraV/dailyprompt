@@ -9,9 +9,10 @@ export async function GET() {
             where: {
                 published: true
             },
-            orderBy: {
-                createdAt: 'desc' // or date? redis code used 'score' which was timestamp.
-            },
+            orderBy: [
+                { pinType: 'asc' }, // "announcement" < "favorite" < "none"
+                { createdAt: 'desc' }
+            ],
             take: 20,
             include: {
                 user: {
@@ -32,7 +33,8 @@ export async function GET() {
             userImage: post.user.image,
             date: post.date,
             text: post.content,
-            publishedAt: post.createdAt.getTime()
+            publishedAt: post.createdAt.getTime(),
+            pinType: post.pinType
         }));
 
         return NextResponse.json(feed);

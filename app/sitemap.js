@@ -28,7 +28,31 @@ export default async function sitemap() {
         priority: 0.8,
         };
     });
-    return [...routes, ...promptRoutes];
+
+    const posts = await prisma.post.findMany({
+      where: { published: true },
+      select: { slug: true, updatedAt: true }
+    });
+
+    const postRoutes = posts.map((p) => ({
+      url: `${baseUrl}/community/${p.slug}`,
+      lastModified: p.updatedAt,
+      changeFrequency: 'monthly',
+      priority: 0.7,
+    }));
+
+    const users = await prisma.user.findMany({
+      select: { id: true }
+    });
+
+    const userRoutes = users.map((u) => ({
+      url: `${baseUrl}/profile/${u.id}`,
+      lastModified: new Date(),
+      changeFrequency: 'weekly',
+      priority: 0.6,
+    }));
+
+    return [...routes, ...promptRoutes, ...postRoutes, ...userRoutes];
 
   } catch (error) {
     console.warn('Sitemap generation failed:', error.message);

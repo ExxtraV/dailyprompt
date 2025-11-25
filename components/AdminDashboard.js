@@ -126,6 +126,29 @@ export default function AdminDashboard() {
         }
     };
 
+    const handlePinToggle = async (post, type) => {
+        // type: 'none', 'favorite', 'announcement'
+        const isCurrent = post.pinType === type;
+        const newType = isCurrent ? 'none' : type;
+
+        try {
+            const res = await fetch('/api/admin/pin', {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ postId: post.id, pinType: newType })
+            });
+
+            if (res.ok) {
+                fetchData();
+            } else {
+                const err = await res.json();
+                alert(`Error: ${err.message}`);
+            }
+        } catch (error) {
+            alert('Failed to update pin status');
+        }
+    };
+
     return (
         <div className="min-h-screen bg-stone-950 text-stone-100 p-8 font-serif">
             <div className="flex justify-between items-center mb-8">
@@ -168,9 +191,25 @@ export default function AdminDashboard() {
                                                     <p className="text-xs text-stone-500">{post.date}</p>
                                                 </div>
                                             </div>
-                                            <div className="flex gap-2">
-                                                <button onClick={() => handleDeletePost(postId)} className="px-3 py-1 text-xs bg-red-900/30 hover:bg-red-900/50 text-red-400 border border-red-900/50 rounded transition-colors">Delete Post</button>
-                                                <button onClick={() => handleBanFromFeed(post.userId)} className="px-3 py-1 text-xs bg-red-600 hover:bg-red-700 text-white rounded transition-colors font-bold">BAN USER</button>
+                                            <div className="flex flex-col gap-2 items-end">
+                                                <div className="flex gap-2">
+                                                    <button
+                                                        onClick={() => handlePinToggle(post, 'favorite')}
+                                                        className={`px-3 py-1 text-xs rounded transition-colors border ${post.pinType === 'favorite' ? 'bg-amber-600 text-white border-amber-600' : 'bg-stone-800 text-stone-400 border-stone-700 hover:border-amber-600'}`}
+                                                    >
+                                                        ★ Fav
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handlePinToggle(post, 'announcement')}
+                                                        className={`px-3 py-1 text-xs rounded transition-colors border ${post.pinType === 'announcement' ? 'bg-blue-600 text-white border-blue-600' : 'bg-stone-800 text-stone-400 border-stone-700 hover:border-blue-600'}`}
+                                                    >
+                                                        📢 Announce
+                                                    </button>
+                                                </div>
+                                                <div className="flex gap-2">
+                                                    <button onClick={() => handleDeletePost(postId)} className="px-3 py-1 text-xs bg-red-900/30 hover:bg-red-900/50 text-red-400 border border-red-900/50 rounded transition-colors">Delete</button>
+                                                    <button onClick={() => handleBanFromFeed(post.userId)} className="px-3 py-1 text-xs bg-red-600 hover:bg-red-700 text-white rounded transition-colors font-bold">BAN USER</button>
+                                                </div>
                                             </div>
                                         </div>
                                         <div className="prose prose-invert max-w-none">
