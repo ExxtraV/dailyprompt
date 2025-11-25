@@ -14,6 +14,7 @@ export default function WritingArea({
     const { data: session } = useSession();
     const [isOpen, setIsOpen] = useState(false);
     const [text, setText] = useState('');
+    const [title, setTitle] = useState('');
     const [dailyGoal, setDailyGoal] = useState(initialGoal || 0);
     const [sprintDuration, setSprintDuration] = useState(5);
     const [sprintEndTime, setSprintEndTime] = useState(null);
@@ -35,6 +36,9 @@ export default function WritingArea({
                         setText(data.text);
                         setIsOpen(true);
                     }
+                    if (data.title) {
+                        setTitle(data.title);
+                    }
                     if (data.published) {
                         setIsPublished(true);
                     }
@@ -42,10 +46,15 @@ export default function WritingArea({
                 .catch(console.error);
         } else if (typeof window !== 'undefined') {
             const key = `draft-${activeDate}`;
+            const titleKey = `draft-title-${activeDate}`;
             const savedDraft = localStorage.getItem(key);
+            const savedTitle = localStorage.getItem(titleKey);
             if (savedDraft) {
                 setText(savedDraft);
                 setIsOpen(true);
+            }
+            if (savedTitle) {
+                setTitle(savedTitle);
             }
         }
 
@@ -58,7 +67,9 @@ export default function WritingArea({
     useEffect(() => {
         if (typeof window !== 'undefined') {
              const key = `draft-${activeDate}`;
+             const titleKey = `draft-title-${activeDate}`;
              localStorage.setItem(key, text);
+             localStorage.setItem(titleKey, title);
         }
 
         if (session) {
@@ -71,7 +82,7 @@ export default function WritingArea({
                     const res = await fetch('/api/draft', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ date: activeDate, text }) // Auto-save doesn't touch published state
+                        body: JSON.stringify({ date: activeDate, text, title }) // Auto-save doesn't touch published state
                     });
                     if (res.ok) {
                         setSaveStatus('saved');
@@ -85,16 +96,21 @@ export default function WritingArea({
         }
 
         onWordCountChange(getWordCount(text));
-    }, [text, session, activeDate]);
+    }, [text, title, session, activeDate]);
 
     const handlePublish = async () => {
         if (!session) return;
+        if (!title.trim()) {
+            setExportStatus('Title is required to publish.');
+            return;
+        }
+
         setSaveStatus('saving');
         try {
             const res = await fetch('/api/draft', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ date: activeDate, text, published: true })
+                body: JSON.stringify({ date: activeDate, text, title, published: true })
             });
             if (res.ok) {
                 setSaveStatus('saved');
@@ -114,7 +130,7 @@ export default function WritingArea({
             const res = await fetch('/api/draft', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ date: activeDate, text, published: false })
+                body: JSON.stringify({ date: activeDate, text, title, published: false })
             });
             if (res.ok) {
                 setSaveStatus('saved');
@@ -208,10 +224,11 @@ export default function WritingArea({
 <html>
 <head>
 <meta charset="utf-8">
-<title>Run & Write Draft - ${activeDate}</title>
+<title>${title || 'Run & Write Draft'} - ${activeDate}</title>
 <style>body { font-family: sans-serif; line-height: 1.6; max-width: 800px; margin: 2rem auto; padding: 0 1rem; }</style>
 </head>
 <body>
+<h1>${title || ''}</h1>
 ${text}
 </body>
 </html>`;
@@ -268,6 +285,18 @@ ${text}
                             </div>
                         )}
                     </div>
+
+                    {/* Title Input */}
+                    <div>
+                         <input
+                             type="text"
+                             placeholder="Give your story a title..."
+                             value={title}
+                             onChange={(e) => setTitle(e.target.value)}
+                             className="w-full p-2 text-lg font-bold border-b border-orange-200 focus:border-orange-500 outline-none bg-transparent placeholder-gray-400 dark:border-gray-600 dark:text-white"
+                         />
+                    </div>
+
                     <Editor
                         initialContent={text}
                         onChange={setText}
@@ -364,7 +393,7 @@ ${text}
                                 </>
                             )}
                         </div>
-                        <p className="text-sm text-gray-600 mt-2 dark:text-gray-300">{exportStatus}</p>
+                        <p className={`text-sm mt-2 transition ${exportStatus.includes('required') ? 'text-red-600 font-bold' : 'text-gray-600 dark:text-gray-300'}`}>{exportStatus}</p>
                     </div>
                 </div>
             )}

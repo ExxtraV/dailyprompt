@@ -25,30 +25,36 @@ export async function PATCH(req) {
              return NextResponse.json({ message: 'Invalid pinType' }, { status: 400 });
         }
 
-        // postId passed from frontend is the slug (e.g. "post:cuid" or just cuid if handled that way)
-        // Wait, frontend feed uses slug as ID. But admin dashboard uses `post.id` which is the CUID?
-        // Let's check AdminDashboard.js.
-        // It uses `const postId = post.id;` (wait, verify AdminDashboard).
-        // AdminDashboard uses `const postId = post.id` but keys with `post:${post.id}`.
-        // But the delete function used `postId` which was constructed as `post:${post.id}`?
-        // Let's re-read AdminDashboard carefully.
-
-        // In AdminDashboard:
-        // feed is from /api/community.
-        // /api/community returns `id: post.slug`.
-        // So post.id IN DASHBOARD is actually the SLUG.
-
-        // But for update, we should probably use the real ID if possible, or query by slug.
-        // Since slug is unique, we can update by slug.
-
         const updatedPost = await prisma.post.update({
             where: {
-                slug: postId // Assuming the ID passed is the slug, based on AdminDashboard logic
+                slug: postId // postId here is the slug from AdminDashboard
             },
             data: {
                 pinType
-            }
+            },
+            include: { user: true } // Include user to get ID for badge
         });
+
+        // --- Award "Run & Write" Badge if pinned as favorite ---
+        if (pinType === 'favorite') {
+             const badgeName = 'run_and_write';
+             const userId = updatedPost.userId;
+
+             const hasBadge = await prisma.badge.findUnique({
+                 where: {
+                     userId_name: { userId, name: badgeName }
+                 }
+             });
+
+             if (!hasBadge) {
+                 await prisma.badge.create({
+                     data: {
+                         userId,
+                         name: badgeName
+                     }
+                 });
+             }
+        }
 
         return NextResponse.json(updatedPost);
 

@@ -4,6 +4,9 @@ import { ArrowLeft, User } from 'lucide-react';
 import { notFound } from 'next/navigation';
 import ThemeToggle from '@/components/ThemeToggle';
 import sanitizeHtml from 'sanitize-html';
+import LikeButton from '@/components/LikeButton';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth';
 
 export async function generateMetadata({ params }) {
     const { slug } = await params;
@@ -16,24 +19,35 @@ export async function generateMetadata({ params }) {
     if (!post) return { title: 'Story Not Found' };
 
     return {
-        title: `${post.user.name || 'Anonymous'}'s Story | Run & Write`,
-        description: `Read a response to the prompt from ${post.date}.`
+        title: `${post.title || post.user.name + "'s Story"} | Run & Write`,
+        description: `Read "${post.title || 'a story'}" by ${post.user.name || 'Anonymous'}.`
     };
 }
 
 export default async function StoryPage({ params }) {
     const { slug } = await params;
+    const session = await getServerSession(authOptions);
+    const currentUserId = session?.user?.id;
 
     const post = await prisma.post.findUnique({
         where: { slug: slug },
         include: {
-            user: true
+            user: true,
+            _count: {
+                select: { likes: true }
+            },
+            likes: currentUserId ? {
+                where: { userId: currentUserId },
+                select: { userId: true }
+            } : false
         }
     });
 
     if (!post) {
         notFound();
     }
+
+    const isLiked = currentUserId ? post.likes.length > 0 : false;
 
     const prompt = await prisma.prompt.findUnique({
         where: { date: post.date }
@@ -66,7 +80,10 @@ export default async function StoryPage({ params }) {
 
                     {/* Story Content */}
                     <div className="p-8">
-                        <div className="flex items-center gap-4 mb-6">
+                        <h1 className="text-4xl font-extrabold text-gray-900 dark:text-white mb-6 font-serif">
+                            {post.title || 'Untitled Story'}
+                        </h1>
+                        <div className="flex items-center justify-between mb-8 pb-8 border-b border-gray-100 dark:border-gray-700">
                             {/* Link to User Profile */}
                             <Link href={`/profile/${post.userId}`} className="flex items-center gap-4 group">
                                 {post.user.image ? (
@@ -81,15 +98,23 @@ export default async function StoryPage({ params }) {
                                     </div>
                                 )}
                                 <div>
-                                    <h1 className="text-xl font-bold text-gray-900 dark:text-white group-hover:text-orange-500 transition">{post.user.name || 'Anonymous'}</h1>
+                                    <p className="text-lg font-bold text-gray-900 dark:text-white group-hover:text-orange-500 transition">{post.user.name || 'Anonymous'}</p>
                                     <p className="text-sm text-gray-500 dark:text-gray-400">
                                         Published on {new Date(post.createdAt).toLocaleDateString()}
                                     </p>
                                 </div>
                             </Link>
+
+                            {/* Actions */}
+                            <LikeButton
+                                initialLikes={post._count.likes}
+                                initialIsLiked={isLiked}
+                                postId={post.id} // Real ID
+                                postSlug={post.slug}
+                            />
                         </div>
 
-                        <div className="prose dark:prose-invert max-w-none text-gray-800 dark:text-gray-300 leading-relaxed text-lg">
+                        <div className="prose dark:prose-invert max-w-none text-gray-800 dark:text-gray-300 leading-relaxed text-lg font-serif">
                             {isHtml ? (
                                 <div dangerouslySetInnerHTML={{ __html: sanitizeHtml(post.content, {
                                     allowedTags: sanitizeHtml.defaults.allowedTags.concat([ 'h1', 'h2', 'u' ]),
