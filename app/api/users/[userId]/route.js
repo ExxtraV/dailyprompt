@@ -28,6 +28,7 @@ export async function GET(request, { params }) {
         id: userId,
         name: user.name,
         image: user.image,
+        role: user.role // Include role for profile customization
     };
 
     // Hydrate badges
@@ -39,6 +40,7 @@ export async function GET(request, { params }) {
         id: post.id,
         slug: post.slug,
         date: post.date,
+        title: post.title, // Include title
         text: post.content,
         publishedAt: post.createdAt
     }));

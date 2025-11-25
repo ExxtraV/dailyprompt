@@ -1,9 +1,11 @@
 'use client';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, Calendar, User } from 'lucide-react';
+import { ArrowLeft, Calendar, User, Heart, Share2 } from 'lucide-react';
+import { useSession } from 'next-auth/react';
 
 export default function CommunityPage() {
+    const { data: session } = useSession();
     const [feed, setFeed] = useState([]);
     const [loading, setLoading] = useState(true);
 
@@ -19,6 +21,37 @@ export default function CommunityPage() {
                 setLoading(false);
             });
     }, []);
+
+    const handleLike = async (post, e) => {
+        e.preventDefault(); // Prevent navigation
+        if (!session) return alert("Please sign in to like stories.");
+
+        // Optimistic UI Update
+        const isLiked = !post.isLiked;
+        const newCount = isLiked ? post.likes + 1 : post.likes - 1;
+
+        setFeed(prev => prev.map(p => p.id === post.id ? { ...p, isLiked, likes: newCount } : p));
+
+        try {
+            await fetch('/api/like', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ postId: post.realId }) // Use realId for API
+            });
+        } catch (error) {
+            console.error("Like failed", error);
+            // Revert on error
+            setFeed(prev => prev.map(p => p.id === post.id ? post : p));
+        }
+    };
+
+    const handleShare = (post, e) => {
+        e.preventDefault();
+        const url = `${window.location.origin}/community/${post.id}`;
+        navigator.clipboard.writeText(url).then(() => {
+            alert("Link copied to clipboard!");
+        });
+    };
 
     return (
         <div className="min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-800 dark:text-gray-200 p-8">
@@ -62,9 +95,8 @@ export default function CommunityPage() {
                             )}
 
                             <Link href={`/community/${item.id}`} className="absolute inset-0 z-0" aria-label="Read full story"></Link>
-                            <div className="flex items-center justify-between mb-4 border-b border-gray-100 dark:border-gray-700 pb-4 relative z-10">
+                            <div className="flex items-center justify-between mb-2 border-b border-gray-100 dark:border-gray-700 pb-4 relative z-10">
                                 <div className="flex items-center gap-3">
-                                    {/* User Avatar & Name Link to Profile */}
                                     <Link href={`/profile/${item.userId}`} className="flex items-center gap-3 group">
                                         {item.userImage ? (
                                             <img src={item.userImage} alt={item.userName} className="w-10 h-10 rounded-full border border-gray-200 dark:border-gray-600 group-hover:ring-2 ring-orange-500 transition" />
@@ -89,17 +121,38 @@ export default function CommunityPage() {
                                 </Link>
                             </div>
 
-                            <div className="prose dark:prose-invert max-w-none relative z-0 pointer-events-none">
-                                <p className="text-gray-700 dark:text-gray-300 leading-relaxed line-clamp-3">
-                                    {item.text.replace(/<[^>]*>/g, ' ')}
-                                </p>
+                            <div className="relative z-10 pointer-events-none mb-2">
+                                <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">{item.title}</h2>
+                                <div className="prose dark:prose-invert max-w-none">
+                                    <p className="text-gray-700 dark:text-gray-300 leading-relaxed line-clamp-2 text-sm">
+                                        {item.text.replace(/<[^>]*>/g, ' ')}
+                                    </p>
+                                </div>
                             </div>
-                            <div className="mt-4 relative z-10 pointer-events-none">
+
+                            <div className="mt-4 flex items-center justify-between relative z-10 pointer-events-none">
                                 <span
                                     className="inline-flex items-center text-sm font-bold text-orange-600 group-card-hover:text-orange-700 dark:text-orange-500 dark:group-card-hover:text-orange-400"
                                 >
                                     Read full story &rarr;
                                 </span>
+
+                                <div className="flex items-center gap-4 pointer-events-auto">
+                                     <button
+                                        onClick={(e) => handleLike(item, e)}
+                                        className={`flex items-center gap-1 text-sm font-medium transition ${item.isLiked ? 'text-pink-600 dark:text-pink-400' : 'text-gray-500 hover:text-pink-500 dark:text-gray-400 dark:hover:text-pink-400'}`}
+                                     >
+                                        <Heart size={18} fill={item.isLiked ? "currentColor" : "none"} />
+                                        {item.likes}
+                                     </button>
+                                     <button
+                                        onClick={(e) => handleShare(item, e)}
+                                        className="text-gray-500 hover:text-blue-500 dark:text-gray-400 dark:hover:text-blue-400 transition"
+                                        title="Share Story"
+                                     >
+                                        <Share2 size={18} />
+                                     </button>
+                                </div>
                             </div>
                         </div>
                     ))}
