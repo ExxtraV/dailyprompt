@@ -151,9 +151,6 @@ export default function Home() {
                 </div>
             </main>
 
-            <footer className="text-center mt-12 text-gray-500 dark:text-gray-400">
-                <p>&copy; 2025 Run & Write. A sanctuary for the written word.</p>
-            </footer>
 
             <HistoryModal
                 isOpen={historyOpen}
