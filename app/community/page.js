@@ -130,14 +130,14 @@ export default function CommunityPage() {
                                 </div>
                             </div>
 
-                            <div className="mt-4 flex items-center justify-between relative z-10">
+                            <div className="mt-4 flex items-center justify-between relative z-10 pointer-events-none">
                                 <span
-                                    className="inline-flex items-center text-sm font-bold text-orange-600 group-card-hover:text-orange-700 dark:text-orange-500 dark:group-card-hover:text-orange-400 pointer-events-none"
+                                    className="inline-flex items-center text-sm font-bold text-orange-600 group-card-hover:text-orange-700 dark:text-orange-500 dark:group-card-hover:text-orange-400"
                                 >
                                     Read full story &rarr;
                                 </span>
 
-                                <div className="flex items-center gap-4">
+                                <div className="flex items-center gap-4 pointer-events-auto">
                                      <button
                                         onClick={(e) => handleLike(item, e)}
                                         className={`flex items-center gap-1 text-sm font-medium transition ${item.isLiked ? 'text-pink-600 dark:text-pink-400' : 'text-gray-500 hover:text-pink-500 dark:text-gray-400 dark:hover:text-pink-400'}`}
