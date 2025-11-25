@@ -183,7 +183,7 @@ export default function ProfilePage() {
                                     <a href={`/community/${post.slug}`} className="block group">
                                         <div className="bg-gray-50 dark:bg-gray-900 p-4 rounded-lg group-hover:ring-2 ring-orange-500 transition">
                                              <p className="line-clamp-3 text-gray-700 dark:text-gray-300 leading-relaxed">
-                                                {post.text}
+                                                {post.text.replace(/<[^>]*>/g, ' ')}
                                             </p>
                                             <div className="mt-2 text-orange-500 font-semibold text-sm group-hover:underline">
                                                 Read more →

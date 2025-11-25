@@ -55,7 +55,9 @@ export async function POST(request) {
         return NextResponse.json({ message: 'Invalid payload' }, { status: 400 });
     }
 
-    const wordCount = text.trim() === '' ? 0 : text.trim().split(/\s+/).length;
+    // Strip HTML tags for word count
+    const plainText = text.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+    const wordCount = plainText === '' ? 0 : plainText.split(/\s+/).length;
 
     // Create or Update Post
     const post = await prisma.post.upsert({

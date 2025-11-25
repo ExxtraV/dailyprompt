@@ -2,6 +2,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { ChevronDown, ChevronUp, Cloud, CloudOff, Loader2, Globe, XCircle } from 'lucide-react';
 import { useSession } from 'next-auth/react';
+import Editor from './Editor';
 
 export default function WritingArea({
     onWordCountChange,
@@ -128,9 +129,10 @@ export default function WritingArea({
 
     function getWordCount(str) {
         if (!str) return 0;
-        const trimmed = str.trim();
-        if (!trimmed) return 0;
-        return trimmed.split(/\s+/).length;
+        // Strip HTML tags
+        const plainText = str.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+        if (!plainText) return 0;
+        return plainText.split(/\s+/).length;
     }
 
     const currentWordCount = getWordCount(text);
@@ -177,11 +179,22 @@ export default function WritingArea({
             return;
         }
         try {
-            await navigator.clipboard.writeText(text);
+            const type = "text/html";
+            const blob = new Blob([text], { type });
+            const data = [new ClipboardItem({ [type]: blob })];
+            await navigator.clipboard.write(data);
             setExportStatus('Draft copied to clipboard!');
             setTimeout(() => setExportStatus(''), 3000);
         } catch (err) {
-            setExportStatus('Copy failed.');
+            // Fallback for browsers that don't support ClipboardItem or write
+            try {
+                // Strip tags for fallback
+                const plainText = text.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+                await navigator.clipboard.writeText(plainText);
+                setExportStatus('Copied as plain text (browser limit).');
+            } catch (e) {
+                setExportStatus('Copy failed.');
+            }
         }
     };
 
@@ -190,11 +203,23 @@ export default function WritingArea({
             setExportStatus('Nothing to download yet.');
             return;
         }
-        const blob = new Blob([text], { type: 'text/plain' });
+        const htmlContent = `
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Run & Write Draft - ${activeDate}</title>
+<style>body { font-family: sans-serif; line-height: 1.6; max-width: 800px; margin: 2rem auto; padding: 0 1rem; }</style>
+</head>
+<body>
+${text}
+</body>
+</html>`;
+        const blob = new Blob([htmlContent], { type: 'text/html' });
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = url;
-        link.download = `run-write-${activeDate}.txt`;
+        link.download = `run-write-${activeDate}.html`;
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
@@ -243,14 +268,11 @@ export default function WritingArea({
                             </div>
                         )}
                     </div>
-                    <textarea
-                        id="writingArea"
-                        rows="8"
-                        className="w-full p-3 border border-orange-200 rounded-md focus:ring-2 focus:ring-orange-400 focus:border-orange-400 resize-none dark:bg-gray-800 dark:border-gray-600 dark:text-gray-100"
+                    <Editor
+                        initialContent={text}
+                        onChange={setText}
                         placeholder={`Write something for ${activeDate}...`}
-                        value={text}
-                        onChange={(e) => setText(e.target.value)}
-                    ></textarea>
+                    />
 
                     <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                         <div className="flex flex-col sm:flex-row gap-4">
