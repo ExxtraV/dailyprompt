@@ -1,6 +1,52 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 
+function getEasterDate(year) {
+    const f = Math.floor,
+        G = year % 19,
+        C = f(year / 100),
+        H = (C - f(C / 4) - f((8 * C + 13) / 25) + 19 * G + 15) % 30,
+        I = H - f(H / 28) * (1 - f(29 / (H + 1)) * f((21 - G) / 11)),
+        J = (year + f(year / 4) + I + 2 - C + f(C / 4)) % 7,
+        L = I - J,
+        month = 3 + f((L + 40) / 44),
+        day = L + 28 - 31 * f(month / 4);
+
+    return `${year}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
+}
+
+function getHolidayContext(dateString) {
+    const date = new Date(dateString);
+    const month = date.getUTCMonth() + 1; // 1-12
+    const day = date.getUTCDate();
+    const year = date.getUTCFullYear();
+
+    // Fixed Holidays
+    if (month === 1 && day === 1) return "It is New Year's Day. Incorporate themes of new beginnings, resolutions, or the passage of time.";
+    if (month === 2 && day === 14) return "It is Valentine's Day. Incorporate themes of love, affection, or heartbreak.";
+    if (month === 3 && day === 17) return "It is St. Patrick's Day. Incorporate themes of luck, folklore, or green.";
+    if (month === 10 && day === 31) return "It is Halloween. Incorporate spooky, eerie, or supernatural elements.";
+    if (month === 12 && day === 24) return "It is Christmas Eve. Incorporate themes of anticipation, warmth, or winter.";
+    if (month === 12 && day === 25) return "It is Christmas Day. Incorporate themes of festivities, family, or winter magic.";
+    if (month === 12 && day === 31) return "It is New Year's Eve. Incorporate themes of endings, reflection, or celebration.";
+
+    // Variable Holidays
+    // Easter
+    if (dateString === getEasterDate(year)) return "It is Easter Sunday. Incorporate themes of rebirth, spring, or hope.";
+
+    // Thanksgiving (USA) - 4th Thursday of November
+    if (month === 11) {
+        // Nov 1st of that year in UTC
+        const firstDay = new Date(Date.UTC(year, 10, 1)).getUTCDay(); // Day of week of Nov 1st (0=Sun)
+        // 4th Thursday calculation
+        const daysUntilFirstThursday = (4 - firstDay + 7) % 7;
+        const thanksgivingDay = 1 + daysUntilFirstThursday + 21;
+        if (day === thanksgivingDay) return "It is Thanksgiving. Incorporate themes of gratitude, feast, or gathering.";
+    }
+
+    return null;
+}
+
 export async function POST(request) {
     try {
         const body = await request.json();
@@ -59,20 +105,23 @@ export async function POST(request) {
                 "Mystery", "Sci-Fi", "Nature", "Emotional", "Urban",
                 "Historical", "Fantasy", "Slice of Life", "Surrealism",
                 "Dystopian", "Adventure", "Philosophical", "Cyberpunk",
-                "Magical Realism", "Horror", "Romance", "Thriller"
+                "Magical Realism", "Horror", "Romance", "Thriller",
+                "Folklore", "Noir", "Solarpunk", "Western", "Gothic"
             ];
             const randomTheme = themes[Math.floor(Math.random() * themes.length)];
+            const holidayContext = getHolidayContext(todayUTC);
 
-            const finalPrompt = `Generate a unique and creative writing prompt for a creative writer.
-            The theme for today is: ${randomTheme}.
-            The prompt should be evocative, open-ended, and suitable for any genre within that theme.
-            It should inspire a scene, a character, or a story.
+            let finalPrompt = `Generate a unique, creative, and open-ended writing prompt.
+            The primary genre/theme is: ${randomTheme}.
+            ${holidayContext ? `IMPORTANT CONTEXT: ${holidayContext}` : ''}
+
+            The prompt should be evocative and inspire a scene, a character, or a story start.
 
             IMPORTANT GUIDELINES:
             - Be creative and avoid clichés.
-            - Do NOT use common tropes like finding a mysterious key, a hidden door, or a music box unless you twist it significantly.
-            - Ensure the prompt is distinct from typical generic prompts.
-            - It should only be 2-3 sentences.
+            - KEEP IT SHORT: Only 1-2 sentences max.
+            - OPEN-ENDED: Allow the writer to decide the specific details.
+            - VARIETY: Focus on present action or an immediate situation.
             - Do not return formatting (no markdown, no bold text).`;
 
             const payload = {
