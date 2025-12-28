@@ -5,10 +5,15 @@ import { useSession } from 'next-auth/react';
 import DOMPurify from 'dompurify';
 
 export default function AdminDashboard() {
-    const [activeTab, setActiveTab] = useState('feed'); // 'feed' | 'users'
+    const [activeTab, setActiveTab] = useState('feed'); // 'feed' | 'users' | 'prompts'
     const [feed, setFeed] = useState([]);
     const [users, setUsers] = useState([]);
     const [loading, setLoading] = useState(true);
+
+    // Prompt Seeding State
+    const [seedDate, setSeedDate] = useState('');
+    const [seedTheme, setSeedTheme] = useState('');
+    const [isSeeding, setIsSeeding] = useState(false);
 
     // Editing State
     const [editingUser, setEditingUser] = useState(null);
@@ -19,13 +24,18 @@ export default function AdminDashboard() {
     }, [activeTab]);
 
     const fetchData = async () => {
+        if (activeTab === 'prompts') {
+            setLoading(false);
+            return;
+        }
+
         setLoading(true);
         try {
             if (activeTab === 'feed') {
                 const res = await fetch('/api/community');
                 const data = await res.json();
                 setFeed(data);
-            } else {
+            } else if (activeTab === 'users') {
                 const res = await fetch('/api/admin/users');
                 const data = await res.json();
                 setUsers(data);
@@ -34,6 +44,32 @@ export default function AdminDashboard() {
             console.error('Failed to fetch data', error);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleSeedPrompt = async (e) => {
+        e.preventDefault();
+        if (!seedDate || !seedTheme) return alert("Please fill in both date and theme");
+
+        setIsSeeding(true);
+        try {
+            const res = await fetch('/api/admin/seed-prompt', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ date: seedDate, theme: seedTheme })
+            });
+
+            const data = await res.json();
+            if (res.ok) {
+                alert(`Success! Prompt scheduled for ${seedDate}`);
+                setSeedTheme('');
+            } else {
+                alert(`Error: ${data.message}`);
+            }
+        } catch (error) {
+            alert('Failed to schedule prompt');
+        } finally {
+            setIsSeeding(false);
         }
     };
 
@@ -166,6 +202,12 @@ export default function AdminDashboard() {
                     >
                         Users
                     </button>
+                    <button
+                        onClick={() => setActiveTab('prompts')}
+                        className={`px-4 py-2 rounded-md transition ${activeTab === 'prompts' ? 'bg-stone-800 text-white shadow' : 'text-stone-500 hover:text-stone-300'}`}
+                    >
+                        Prompts
+                    </button>
                 </div>
             </div>
 
@@ -294,6 +336,43 @@ export default function AdminDashboard() {
                                     )}
                                 </tbody>
                             </table>
+                        </div>
+                    )}
+
+                    {activeTab === 'prompts' && (
+                        <div className="bg-stone-900 p-6 rounded-lg border border-stone-800">
+                            <h2 className="text-xl font-bold text-amber-500 mb-4">Schedule Future Prompt</h2>
+                            <form onSubmit={handleSeedPrompt} className="space-y-4 max-w-md">
+                                <div>
+                                    <label className="block text-sm text-stone-400 mb-1">Date</label>
+                                    <input
+                                        type="date"
+                                        value={seedDate}
+                                        onChange={e => setSeedDate(e.target.value)}
+                                        className="w-full bg-stone-950 border border-stone-700 rounded px-3 py-2 text-white focus:border-amber-500 outline-none"
+                                        required
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm text-stone-400 mb-1">Theme / Topic</label>
+                                    <input
+                                        type="text"
+                                        value={seedTheme}
+                                        onChange={e => setSeedTheme(e.target.value)}
+                                        placeholder="e.g. Cyberpunk, A lost cat, Winter Solstice"
+                                        className="w-full bg-stone-950 border border-stone-700 rounded px-3 py-2 text-white focus:border-amber-500 outline-none"
+                                        required
+                                    />
+                                    <p className="text-xs text-stone-500 mt-1">This will immediately generate and save a prompt for the selected date.</p>
+                                </div>
+                                <button
+                                    type="submit"
+                                    disabled={isSeeding}
+                                    className="w-full bg-amber-600 hover:bg-amber-700 text-white font-bold py-2 px-4 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                    {isSeeding ? 'Generating...' : 'Generate & Schedule'}
+                                </button>
+                            </form>
                         </div>
                     )}
                 </div>
