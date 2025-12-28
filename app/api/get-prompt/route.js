@@ -54,7 +54,10 @@ export async function POST(request) {
 
         if (action === 'get_history') {
             try {
+                // Ensure we don't leak future seeded prompts
+                const todayUTC = new Date().toISOString().split('T')[0];
                 const prompts = await prisma.prompt.findMany({
+                    where: { date: { lte: todayUTC } },
                     orderBy: { date: 'desc' }
                 });
 
