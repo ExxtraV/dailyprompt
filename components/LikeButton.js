@@ -5,10 +5,8 @@ import { Heart, Share2 } from 'lucide-react';
 export default function LikeButton({ initialLikes, initialIsLiked, postId, postSlug }) {
     const [likes, setLikes] = useState(initialLikes);
     const [isLiked, setIsLiked] = useState(initialIsLiked);
-    const [loading, setLoading] = useState(false);
 
     const handleLike = async () => {
-        // Optimistic UI
         const prevIsLiked = isLiked;
         const prevLikes = likes;
 
@@ -23,11 +21,10 @@ export default function LikeButton({ initialLikes, initialIsLiked, postId, postS
             });
 
             if (!res.ok) {
-                 if (res.status === 401) alert("Please sign in to like stories.");
-                 throw new Error("Failed");
+                if (res.status === 401) alert("Please sign in to like stories.");
+                throw new Error("Failed");
             }
         } catch (error) {
-            // Revert
             setIsLiked(prevIsLiked);
             setLikes(prevLikes);
         }
@@ -40,8 +37,18 @@ export default function LikeButton({ initialLikes, initialIsLiked, postId, postS
         });
     };
 
+    const handleTwitterShare = () => {
+        const url = `${window.location.origin}/community/${postSlug}`;
+        const text = `Check out this story on Run & Write ✍️`;
+        window.open(
+            `https://twitter.com/intent/tweet?url=${encodeURIComponent(url)}&text=${encodeURIComponent(text)}`,
+            '_blank',
+            'noopener,noreferrer'
+        );
+    };
+
     return (
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3">
             <button
                 onClick={handleLike}
                 className={`flex items-center gap-2 px-4 py-2 rounded-full border transition ${
@@ -54,11 +61,21 @@ export default function LikeButton({ initialLikes, initialIsLiked, postId, postS
                 <span className="font-bold">{likes}</span>
             </button>
             <button
-                onClick={handleShare}
-                className="flex items-center gap-2 px-4 py-2 rounded-full border border-gray-200 bg-white text-gray-600 hover:border-blue-300 hover:text-blue-500 transition dark:bg-gray-800 dark:border-gray-600 dark:text-gray-300 dark:hover:text-blue-400"
+                onClick={handleTwitterShare}
+                className="flex items-center gap-2 px-3 py-2 rounded-full border border-gray-200 bg-white text-gray-500 hover:border-sky-300 hover:text-sky-500 transition dark:bg-gray-800 dark:border-gray-600 dark:text-gray-400 dark:hover:text-sky-400"
+                title="Share on X"
             >
-                <Share2 size={20} />
-                <span className="font-bold hidden sm:inline">Share</span>
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true">
+                    <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+                </svg>
+            </button>
+            <button
+                onClick={handleShare}
+                className="flex items-center gap-2 px-3 py-2 rounded-full border border-gray-200 bg-white text-gray-600 hover:border-blue-300 hover:text-blue-500 transition dark:bg-gray-800 dark:border-gray-600 dark:text-gray-300 dark:hover:text-blue-400"
+                title="Copy link"
+            >
+                <Share2 size={18} />
+                <span className="font-bold hidden sm:inline text-sm">Share</span>
             </button>
         </div>
     );
