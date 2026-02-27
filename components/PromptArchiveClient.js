@@ -45,7 +45,7 @@ export default function PromptArchiveClient({ prompt, date, prevDateStr, nextDat
                             <span>{copied ? 'Copied!' : 'Copy'}</span>
                         </button>
                         <a
-                            href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(`Writing prompt: "${prompt}"`)}&url=${encodeURIComponent(`https://prompt.run-write.com/prompt/${date}`)}`}
+                            href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(`Writing prompt: "${prompt}"`)}&url=${encodeURIComponent(`${process.env.NEXT_PUBLIC_SITE_URL || 'https://prompt.run-write.com'}/prompt/${date}`)}`}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="flex items-center gap-2 bg-blue-400 hover:bg-blue-500 text-white font-semibold py-2 px-4 rounded-lg transition"

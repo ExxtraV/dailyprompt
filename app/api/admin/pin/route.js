@@ -2,18 +2,12 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
+import { isAdmin } from '@/lib/admin';
 
 export async function PATCH(req) {
     const session = await getServerSession(authOptions);
 
-    if (!session || !session.user) {
-        return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
-    }
-
-    const adminEmails = process.env.ADMIN_EMAILS || '';
-    const admins = adminEmails.split(',').map(e => e.trim());
-
-    if (!admins.includes(session.user.email)) {
+    if (!session || !session.user || !isAdmin(session.user.email)) {
         return NextResponse.json({ message: 'Forbidden' }, { status: 403 });
     }
 

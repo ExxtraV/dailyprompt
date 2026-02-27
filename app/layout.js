@@ -8,9 +8,26 @@ import { Analytics } from "@vercel/analytics/react";
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata = {
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'https://prompt.run-write.com'),
   title: "Run & Write | Daily Writing Prompts for Creative Writers",
-  description: "Unlock your imagination with a fresh, daily writing prompt. Run & Write is a free sanctuary for creative writers seeking inspiration, story ideas, and a cure for writer's block.",
-  keywords: ["writing prompts", "creative writing", "daily prompts", "writer's block", "story ideas", "writing community", "creative writing exercises", "short stories", "writing challenge"],
+  description: "Get a free daily writing prompt and join a community of creative writers. Overcome writer's block with inspiring prompts, story ideas, and writing challenges.",
+  robots: 'index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1',
+  openGraph: {
+    type: 'website',
+    locale: 'en_US',
+    siteName: 'Run & Write',
+    title: 'Run & Write | Daily Writing Prompts for Creative Writers',
+    description: "Get a free daily writing prompt and join a community of creative writers. Overcome writer's block with inspiring prompts, story ideas, and writing challenges.",
+    images: [
+      { url: '/og-image.png', width: 1200, height: 630, alt: 'Run & Write — Daily Writing Prompts' },
+    ],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Run & Write | Daily Writing Prompts',
+    description: "Free daily writing prompts to spark your creativity and overcome writer's block.",
+    images: ['/og-image.png'],
+  },
 };
 
 export default function RootLayout({ children }) {

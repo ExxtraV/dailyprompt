@@ -4,22 +4,32 @@ import { notFound } from 'next/navigation';
 
 export async function generateMetadata({ params }) {
     const { date } = await params;
+    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://prompt.run-write.com';
 
     const prompt = await prisma.prompt.findUnique({
         where: { date: date }
     });
 
-    if (!prompt) return { title: 'Prophecy Not Found' };
+    if (!prompt) return { title: 'Prophecy Not Found', robots: 'noindex' };
+
+    const preview = prompt.text.substring(0, 155);
 
     return {
         title: `Writing Prompt for ${date} | Run & Write`,
-        description: `Creative writing prompt for ${date}: ${prompt.text.substring(0, 120)}...`,
+        description: `Daily writing prompt for ${date}: "${preview}..."`,
+        alternates: { canonical: `${baseUrl}/prompt/${date}` },
         openGraph: {
             title: `Writing Prompt for ${date} | Run & Write`,
-            description: `${prompt.text.substring(0, 120)}...`,
+            description: preview,
             type: 'website',
-            url: `https://prompt.run-write.com/prompt/${date}`,
-        }
+            url: `${baseUrl}/prompt/${date}`,
+            siteName: 'Run & Write',
+        },
+        twitter: {
+            card: 'summary',
+            title: `Writing Prompt — ${date}`,
+            description: preview,
+        },
     };
 }
 
