@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { checkBadges } from '@/lib/gamification';
+import sanitizeHtml from 'sanitize-html';
 
 export async function GET(request) {
     const session = await getServerSession(authOptions);
@@ -56,8 +57,18 @@ export async function POST(request) {
         return NextResponse.json({ message: 'Invalid payload' }, { status: 400 });
     }
 
+    if (published === true && !title?.trim()) {
+        return NextResponse.json({ message: 'A title is required to publish your story.' }, { status: 400 });
+    }
+
+    // Sanitize HTML before storing to prevent XSS in the database
+    const sanitizedText = sanitizeHtml(text, {
+        allowedTags: sanitizeHtml.defaults.allowedTags.concat(['h1', 'h2', 'u']),
+        allowedAttributes: sanitizeHtml.defaults.allowedAttributes,
+    });
+
     // Strip HTML tags for word count
-    const plainText = text.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+    const plainText = sanitizedText.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
     const wordCount = plainText === '' ? 0 : plainText.split(/\s+/).length;
 
     // Create or Update Post
@@ -66,19 +77,8 @@ export async function POST(request) {
              slug: `${userId.replace(/[^a-zA-Z0-9]/g, '-')}-${date}`
         },
         update: {
-            content: text,
-            title: title || undefined, // Only update title if provided (or allow setting null? Title is optional in DB but required by front. If front sends empty string, what then? DB allows null. Front says mandatory.)
-            // Actually user said title is mandatory for PUBLISHING.
-            // Autosave might send partial data.
-            // If published is true, title MUST be present.
-            // Logic:
-            // If `published` is explicitly true in this request:
-            //    Check if title is provided OR exists in DB (if not provided).
-            //    Actually if it's an update, the title might already be there.
-            // For simplicity, if published is true, we expect title in body or we fail?
-            // Let's trust frontend to validate before sending published=true.
-            // But we should save the title if sent.
-
+            content: sanitizedText,
+            title: title || undefined,
             wordCount: wordCount,
             published: published !== undefined ? published : undefined,
         },
@@ -86,27 +86,12 @@ export async function POST(request) {
             userId: userId,
             date: date,
             slug: `${userId.replace(/[^a-zA-Z0-9]/g, '-')}-${date}`,
-            content: text,
+            content: sanitizedText,
             title: title || null,
             wordCount: wordCount,
             published: published || false
         }
     });
-
-    // Server-side validation for Title on Publish
-    if (published && !post.title && !title) {
-        // We might have just saved it without title.
-        // If we want to enforce it properly:
-        // But `post` is the result of upsert.
-        // If the result `post.title` is missing and `post.published` is true, we should revert or error?
-        // It's better to validation before upsert.
-
-        // However, complex with upsert.
-        // Let's assume frontend handles the UI validation.
-        // But for safety, we could check:
-        // const currentPost = await prisma.post.find...
-        // For now, I will proceed with just saving the data.
-    }
 
 
     // --- Stats Calculation ---

@@ -102,7 +102,7 @@ export async function POST(request) {
             }
 
             // Using the user-specified model: gemini-2.0-flash
-            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent`;
 
             const themes = [
                 "Mystery", "Sci-Fi", "Nature", "Emotional", "Urban",
@@ -136,7 +136,7 @@ export async function POST(request) {
 
             const geminiResponse = await fetch(apiUrl, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
                 body: JSON.stringify(payload)
             });
 

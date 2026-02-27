@@ -10,17 +10,46 @@ import { authOptions } from '@/lib/auth';
 
 export async function generateMetadata({ params }) {
     const { slug } = await params;
+    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://prompt.run-write.com';
 
     const post = await prisma.post.findUnique({
         where: { slug: slug },
         include: { user: true }
     });
 
-    if (!post) return { title: 'Story Not Found' };
+    if (!post) return { title: 'Story Not Found', robots: 'noindex' };
+
+    const title = post.title || `${post.user.name || 'Anonymous'}'s Story`;
+    const excerpt = post.content
+        .replace(/<[^>]*>/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .substring(0, 160);
+    const description = excerpt || `Read a story by ${post.user.name || 'Anonymous'} inspired by Run & Write's daily writing prompts.`;
 
     return {
-        title: `${post.title || post.user.name + "'s Story"} | Run & Write`,
-        description: `Read "${post.title || 'a story'}" by ${post.user.name || 'Anonymous'}.`
+        title: `${title} | Run & Write`,
+        description,
+        alternates: { canonical: `${baseUrl}/community/${post.slug}` },
+        openGraph: {
+            type: 'article',
+            siteName: 'Run & Write',
+            url: `${baseUrl}/community/${post.slug}`,
+            title,
+            description,
+            publishedTime: post.createdAt,
+            modifiedTime: post.updatedAt,
+            authors: [post.user.name || 'Anonymous'],
+            images: post.user.image
+                ? [{ url: post.user.image, width: 512, height: 512, alt: `${post.user.name}'s avatar` }]
+                : [],
+        },
+        twitter: {
+            card: 'summary',
+            title,
+            description: description.substring(0, 120),
+            images: post.user.image ? [post.user.image] : [],
+        },
     };
 }
 
