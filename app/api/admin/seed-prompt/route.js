@@ -2,18 +2,13 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
+import { isAdmin } from '@/lib/admin';
 
 export async function POST(request) {
     // 1. Auth Check
     const session = await getServerSession(authOptions);
-    if (!session || !session.user) {
-        return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
-    }
-
-    const adminEmails = process.env.ADMIN_EMAILS || '';
-    const admins = adminEmails.split(',').map(e => e.trim());
-    if (!admins.includes(session.user.email)) {
-         return NextResponse.json({ message: 'Forbidden' }, { status: 403 });
+    if (!session || !session.user || !isAdmin(session.user.email)) {
+        return NextResponse.json({ message: 'Forbidden' }, { status: 403 });
     }
 
     try {
@@ -30,7 +25,7 @@ export async function POST(request) {
             return NextResponse.json({ message: 'Gemini API Key missing' }, { status: 500 });
         }
 
-        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent`;
 
         const promptInstruction = `Generate a unique and creative writing prompt for a creative writer.
         The specific theme/topic requested is: ${theme}.
@@ -52,7 +47,7 @@ export async function POST(request) {
 
         const geminiResponse = await fetch(apiUrl, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
             body: JSON.stringify(payload)
         });
 
