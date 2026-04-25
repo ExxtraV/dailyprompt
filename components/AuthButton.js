@@ -69,20 +69,12 @@ export default function AuthButton() {
   }
 
   return (
-    <div className="flex gap-3 items-center">
-        <Link
-            href="/community"
-            className="text-sm font-semibold text-gray-600 hover:text-orange-600 dark:text-gray-300 dark:hover:text-orange-400 hidden sm:block transition"
-        >
-            Community
-        </Link>
-        <button
-            onClick={() => signIn("google")}
-            className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-orange-500 rounded-lg shadow hover:bg-orange-600 focus:outline-none focus:ring-4 focus:ring-orange-200 dark:focus:ring-orange-800 transition-transform transform hover:scale-105"
-        >
-            <LogIn size={18} />
-            Sign In
-        </button>
-    </div>
+    <button
+        onClick={() => signIn("google")}
+        className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-orange-500 rounded-lg shadow hover:bg-orange-600 focus:outline-none focus:ring-4 focus:ring-orange-200 dark:focus:ring-orange-800 transition-transform transform hover:scale-105"
+    >
+        <LogIn size={16} />
+        Sign In
+    </button>
   );
 }

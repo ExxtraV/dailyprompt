@@ -117,11 +117,22 @@ export default function Home() {
 
     return (
         <div className="min-h-screen flex flex-col">
-            {/* Top nav bar */}
-            <div className="w-full flex justify-between items-center px-4 pt-4 pb-0 max-w-2xl mx-auto">
-                <AuthButton />
-                <ThemeToggle />
-            </div>
+            {/* Sticky top navbar */}
+            <nav className="sticky top-0 z-40 w-full bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
+                <div className="max-w-5xl mx-auto px-4 h-14 flex items-center justify-between">
+                    <span className="font-black text-base text-gray-900 dark:text-white tracking-tight">Run & Write</span>
+                    <div className="flex items-center gap-1 sm:gap-3">
+                        <Link href="/community" className="px-3 py-1.5 text-sm font-semibold text-gray-600 hover:text-orange-500 dark:text-gray-300 dark:hover:text-orange-400 transition rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 hidden sm:block">
+                            Community
+                        </Link>
+                        <a href="https://www.run-write.com" className="px-3 py-1.5 text-sm font-semibold text-gray-600 hover:text-orange-500 dark:text-gray-300 dark:hover:text-orange-400 transition rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 hidden sm:block">
+                            About
+                        </a>
+                        <ThemeToggle />
+                        <AuthButton />
+                    </div>
+                </div>
+            </nav>
 
             {/* Page content */}
             <div className="flex-grow flex flex-col items-center px-4 pb-12">
