@@ -32,14 +32,12 @@ export default function ThemeToggle() {
   };
 
   return (
-    <div className="absolute top-4 right-4">
-      <button
-        onClick={toggleTheme}
-        className="p-2 rounded-full bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-600 transition focus:outline-none focus:ring-2 focus:ring-orange-500"
-        aria-label="Toggle Theme"
-      >
-        {theme === 'light' ? <Moon size={24} /> : <Sun size={24} />}
-      </button>
-    </div>
+    <button
+      onClick={toggleTheme}
+      className="p-2 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600 transition focus:outline-none focus:ring-2 focus:ring-orange-500"
+      aria-label="Toggle Theme"
+    >
+      {theme === 'light' ? <Moon size={18} /> : <Sun size={18} />}
+    </button>
   );
 }
