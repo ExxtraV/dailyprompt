@@ -6,6 +6,7 @@ import WritingArea from '@/components/WritingArea';
 import HistoryModal from '@/components/HistoryModal';
 import ThemeToggle from '@/components/ThemeToggle';
 import AuthButton from '@/components/AuthButton';
+import Link from 'next/link';
 
 // Force dynamic rendering to ensure the page is served by the server (lambda)
 // rather than potentially stale or missing static files on the edge.
@@ -29,9 +30,7 @@ export default function Home() {
                 const res = await fetch('/api/get-prompt', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        action: 'get_today'
-                    })
+                    body: JSON.stringify({ action: 'get_today' })
                 });
                 if (!res.ok) throw new Error('Failed to fetch prompt');
                 const data = await res.json();
@@ -75,13 +74,11 @@ export default function Home() {
                 let currentStreak = 0;
                 let cursor = new Date();
 
-                // Check goal met for today
                 const todayKey = cursor.toISOString().split('T')[0];
                 if (completions[todayKey]?.goalMet) {
                     setIsGoalMet(true);
                 }
 
-                // Calculate streak
                 while (true) {
                     const key = cursor.toISOString().split('T')[0];
                     if (completions[key] && completions[key].goalMet) {
@@ -113,44 +110,82 @@ export default function Home() {
     const handleWordCountChange = (count) => {
         const storedGoal = typeof window !== 'undefined' ? localStorage.getItem('dailyWordGoal') : null;
         const goal = storedGoal ? parseInt(storedGoal, 10) : 0;
-
         if (goal > 0 && count >= goal) {
             handleGoalMet();
         }
     };
 
     return (
-        <div className="min-h-screen flex flex-col items-center justify-center p-4 relative">
-            {/* Top Left: Auth Button */}
-            <div className="absolute top-4 left-4 z-10">
-                <AuthButton />
-            </div>
-
-            {/* Top Right: Theme Toggle */}
-            <ThemeToggle />
-
-            <Header streak={streak} />
-
-            <main className="w-full max-w-2xl bg-white rounded-xl shadow-lg p-8 border border-gray-200 dark:bg-gray-800 dark:border-gray-700">
-                <PromptDisplay prompt={prompt} loading={loading} error={error} />
-
-                <WritingArea
-                    onWordCountChange={handleWordCountChange}
-                    initialGoal={0}
-                    onGoalMet={handleGoalMet}
-                    isGoalMet={isGoalMet}
-                />
-
-                <div className="text-center mt-6">
-                    <button
-                        onClick={() => setHistoryOpen(true)}
-                        className="bg-gray-700 hover:bg-gray-900 text-white font-bold py-2 px-6 rounded-lg transition-transform transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-gray-300 dark:bg-orange-600 dark:hover:bg-orange-700 dark:focus:ring-orange-800"
-                    >
-                        View Prompt Archive
-                    </button>
+        <div className="min-h-screen flex flex-col">
+            {/* Sticky top navbar */}
+            <nav className="sticky top-0 z-40 w-full bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
+                <div className="max-w-5xl mx-auto px-4 h-14 flex items-center justify-between">
+                    <span className="font-black text-base text-gray-900 dark:text-white tracking-tight">Run & Write</span>
+                    <div className="flex items-center gap-1 sm:gap-3">
+                        <Link href="/community" className="px-3 py-1.5 text-sm font-semibold text-gray-600 hover:text-orange-500 dark:text-gray-300 dark:hover:text-orange-400 transition rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 hidden sm:block">
+                            Community
+                        </Link>
+                        <a href="https://www.run-write.com" className="px-3 py-1.5 text-sm font-semibold text-gray-600 hover:text-orange-500 dark:text-gray-300 dark:hover:text-orange-400 transition rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 hidden sm:block">
+                            About
+                        </a>
+                        <ThemeToggle />
+                        <AuthButton />
+                    </div>
                 </div>
-            </main>
+            </nav>
 
+            {/* Page content */}
+            <div className="flex-grow flex flex-col items-center px-4 pb-12">
+                <Header streak={streak} />
+
+                {/* Value proposition pills */}
+                <div className="flex flex-wrap justify-center gap-2 mb-6 -mt-2">
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-semibold bg-orange-100 text-orange-700 rounded-full dark:bg-gray-800 dark:text-orange-400">
+                        ✍️ New prompt every day
+                    </span>
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-semibold bg-orange-100 text-orange-700 rounded-full dark:bg-gray-800 dark:text-orange-400">
+                        🔥 Build a writing streak
+                    </span>
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-semibold bg-orange-100 text-orange-700 rounded-full dark:bg-gray-800 dark:text-orange-400">
+                        📖 Publish to the community
+                    </span>
+                </div>
+
+                {/* Main writing card */}
+                <main className="w-full max-w-2xl bg-white rounded-2xl shadow-xl p-8 border border-gray-100 dark:bg-gray-800 dark:border-gray-700">
+                    <PromptDisplay prompt={prompt} loading={loading} error={error} />
+
+                    <WritingArea
+                        onWordCountChange={handleWordCountChange}
+                        initialGoal={0}
+                        onGoalMet={handleGoalMet}
+                        isGoalMet={isGoalMet}
+                    />
+
+                    <div className="text-center mt-6">
+                        <button
+                            onClick={() => setHistoryOpen(true)}
+                            className="bg-gray-700 hover:bg-gray-900 text-white font-bold py-2 px-6 rounded-lg transition-transform transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-gray-300 dark:bg-orange-600 dark:hover:bg-orange-700 dark:focus:ring-orange-800"
+                        >
+                            View Prompt Archive
+                        </button>
+                    </div>
+                </main>
+
+                {/* Community CTA */}
+                <div className="mt-8 w-full max-w-2xl">
+                    <Link
+                        href="/community"
+                        className="group flex items-center justify-between w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl px-6 py-5 shadow-sm hover:shadow-md hover:border-orange-300 dark:hover:border-orange-700 transition"
+                    >
+                        <div>
+                            <p className="font-bold text-gray-900 dark:text-white text-base">See what others are writing</p>
+                            <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">Explore stories from the community feed →</p>
+                        </div>
+                        <div className="text-3xl group-hover:scale-110 transition">📚</div>
+                    </Link>
+                </div>
+            </div>
 
             <HistoryModal
                 isOpen={historyOpen}

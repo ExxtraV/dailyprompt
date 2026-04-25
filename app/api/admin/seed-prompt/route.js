@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { isAdmin } from '@/lib/admin';
+import Anthropic from '@anthropic-ai/sdk';
 
 export async function POST(request) {
     // 1. Auth Check
@@ -19,13 +20,13 @@ export async function POST(request) {
             return NextResponse.json({ message: 'Date and Theme are required' }, { status: 400 });
         }
 
-        // 2. Generate via Gemini
-        const apiKey = process.env.GEMINI_API_KEY;
+        // 2. Generate via Claude
+        const apiKey = process.env.ANTHROPIC_API_KEY;
         if (!apiKey) {
-            return NextResponse.json({ message: 'Gemini API Key missing' }, { status: 500 });
+            return NextResponse.json({ message: 'Anthropic API Key missing' }, { status: 500 });
         }
 
-        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent`;
+        const anthropic = new Anthropic({ apiKey });
 
         const promptInstruction = `Generate a unique and creative writing prompt for a creative writer.
         The specific theme/topic requested is: ${theme}.
@@ -38,30 +39,24 @@ export async function POST(request) {
         - It should only be 1-2 sentences.
         - Do not return formatting (no markdown, no bold text).`;
 
-        const payload = {
-            contents: [{ parts: [{ text: promptInstruction }] }],
-            generationConfig: {
-                temperature: 1.0 // High creativity
-            }
-        };
-
-        const geminiResponse = await fetch(apiUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
-            body: JSON.stringify(payload)
-        });
-
-        if (!geminiResponse.ok) {
-            const error = await geminiResponse.json();
-            console.error("Gemini API Error (Seeding):", error);
-            return NextResponse.json({ message: 'Failed to generate prompt from Gemini' }, { status: 502 });
+        let claudeResponse;
+        try {
+            claudeResponse = await anthropic.messages.create({
+                model: 'claude-sonnet-4-6',
+                max_tokens: 256,
+                messages: [{ role: 'user', content: promptInstruction }],
+            });
+        } catch (apiError) {
+            console.error("Claude API Error (Seeding):", apiError);
+            return NextResponse.json({ message: 'Failed to generate prompt from Claude' }, { status: 502 });
         }
 
-        const result = await geminiResponse.json();
-        const newPromptText = result.candidates?.[0]?.content?.parts?.[0]?.text;
+        const newPromptText = claudeResponse.content?.[0]?.type === 'text'
+            ? claudeResponse.content[0].text
+            : null;
 
         if (!newPromptText) {
-             return NextResponse.json({ message: 'Gemini returned empty response' }, { status: 502 });
+            return NextResponse.json({ message: 'Claude returned empty response' }, { status: 502 });
         }
 
         // 3. Save to DB (Upsert)

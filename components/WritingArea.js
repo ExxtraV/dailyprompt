@@ -101,7 +101,7 @@ export default function WritingArea({
     const handlePublish = async () => {
         if (!session) return;
         if (!title.trim()) {
-            setExportStatus('Title is required to publish.');
+            setExportStatus("Every great story needs a title — what's yours?");
             return;
         }
 
@@ -115,7 +115,7 @@ export default function WritingArea({
             if (res.ok) {
                 setSaveStatus('saved');
                 setIsPublished(true);
-                setExportStatus('Published to Community!');
+                setExportStatus("You're published! Share your spark. 🔥");
                 setTimeout(() => setExportStatus(''), 3000);
             }
         } catch (e) {
@@ -135,7 +135,7 @@ export default function WritingArea({
             if (res.ok) {
                 setSaveStatus('saved');
                 setIsPublished(false);
-                setExportStatus('Unpublished from Community.');
+                setExportStatus('Story removed from the community feed.');
                 setTimeout(() => setExportStatus(''), 3000);
             }
         } catch (e) {
@@ -172,7 +172,7 @@ export default function WritingArea({
         sprintIntervalRef.current = setInterval(() => {
             const remaining = endTime - Date.now();
             if (remaining <= 0) {
-                setSprintStatus('Sprint complete! Fantastic work.');
+                setSprintStatus('Sprint complete! Every word counts. 🔥');
                 setSprintEndTime(null);
                 clearInterval(sprintIntervalRef.current);
             } else {
@@ -186,12 +186,12 @@ export default function WritingArea({
     const stopSprint = () => {
         if (sprintIntervalRef.current) clearInterval(sprintIntervalRef.current);
         setSprintEndTime(null);
-        setSprintStatus('Sprint paused. Restart when ready.');
+        setSprintStatus('Sprint paused — restart when ready.');
     };
 
     const copyDraft = async () => {
         if (!text) {
-            setExportStatus('Nothing to copy yet.');
+            setExportStatus("No words yet — let's change that!");
             return;
         }
         try {
@@ -216,7 +216,7 @@ export default function WritingArea({
 
     const downloadDraft = () => {
         if (!text) {
-            setExportStatus('Nothing to download yet.');
+            setExportStatus("No words yet — start writing first!");
             return;
         }
         const htmlContent = `
@@ -247,7 +247,7 @@ ${text}
     const getGoalStatusText = () => {
         if (!dailyGoal || dailyGoal <= 0) return 'No daily goal set.';
         const progress = `${currentWordCount} / ${dailyGoal} words`;
-        if (isGoalMet) return `Goal met! ${progress}.`;
+        if (isGoalMet) return `Goal crushed! ${progress} 🔥`;
         return `Keep going: ${progress}.`;
     };
 
@@ -270,7 +270,7 @@ ${text}
                         {session ? (
                             <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
                                 {saveStatus === 'saving' && <><Loader2 size={14} className="animate-spin" /> Saving...</>}
-                                {saveStatus === 'saved' && <><Cloud size={14} /> Saved</>}
+                                {saveStatus === 'saved' && <><Cloud size={14} /> Saved to the cloud</>}
                                 {saveStatus === 'error' && <><CloudOff size={14} className="text-red-500" /> Save Failed</>}
 
                                 {isPublished && (
@@ -281,7 +281,7 @@ ${text}
                             </div>
                         ) : (
                             <div className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400">
-                                <span>Saved locally (Login to sync)</span>
+                                <span>Saved locally — sign in to sync across devices.</span>
                             </div>
                         )}
                     </div>
