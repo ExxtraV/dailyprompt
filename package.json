@@ -8,6 +8,7 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.91.1",
     "@auth/prisma-adapter": "^2.11.1",
     "@prisma/client": "^5.11.0",
     "@tailwindcss/postcss": "^4.1.17",

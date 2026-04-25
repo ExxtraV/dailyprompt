@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import Anthropic from '@anthropic-ai/sdk';
 
 function getEasterDate(year) {
     const f = Math.floor,
@@ -91,18 +92,16 @@ export async function POST(request) {
                 // Continue to generate. If DB is down/uninitialized, we can still try to generate and just return the text without saving.
             }
 
-            // 2. Generate via Gemini
-            const apiKey = process.env.GEMINI_API_KEY;
+            // 2. Generate via Claude
+            const apiKey = process.env.ANTHROPIC_API_KEY;
             if (!apiKey) {
-                console.error("Missing GEMINI_API_KEY");
-                // Fallback prompt if API key is missing
+                console.error("Missing ANTHROPIC_API_KEY");
                 return NextResponse.json({
                     text: "The oracle is sleeping (API Key missing). Please check your configuration. In the meantime: Describe a character realizing they have been wrong about something important for their entire life."
                 });
             }
 
-            // Using the user-specified model: gemini-2.0-flash
-            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent`;
+            const anthropic = new Anthropic({ apiKey });
 
             const themes = [
                 "Mystery", "Sci-Fi", "Nature", "Emotional", "Urban",
@@ -127,29 +126,23 @@ export async function POST(request) {
             - VARIETY: Focus on present action or an immediate situation.
             - Do not return formatting (no markdown, no bold text).`;
 
-            const payload = {
-                contents: [{ parts: [{ text: finalPrompt }] }],
-                generationConfig: {
-                    temperature: 1.0
-                }
-            };
-
-            const geminiResponse = await fetch(apiUrl, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
-                body: JSON.stringify(payload)
-            });
-
-            if (!geminiResponse.ok) {
-                const error = await geminiResponse.json();
-                console.error("Gemini API Error:", error);
+            let claudeResponse;
+            try {
+                claudeResponse = await anthropic.messages.create({
+                    model: 'claude-sonnet-4-6',
+                    max_tokens: 256,
+                    messages: [{ role: 'user', content: finalPrompt }],
+                });
+            } catch (apiError) {
+                console.error("Claude API Error:", apiError);
                 return NextResponse.json({
-                    text: "The stars are misaligned (Gemini API Error). Please try again later. In the meantime: Write about a silence that speaks louder than words."
+                    text: "The stars are misaligned (Claude API Error). Please try again later. In the meantime: Write about a silence that speaks louder than words."
                 });
             }
 
-            const result = await geminiResponse.json();
-            const newPromptText = result.candidates?.[0]?.content?.parts?.[0]?.text;
+            const newPromptText = claudeResponse.content?.[0]?.type === 'text'
+                ? claudeResponse.content[0].text
+                : null;
 
             if (newPromptText) {
                 // 3. Try to save to DB
